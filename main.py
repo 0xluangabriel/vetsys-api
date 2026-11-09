@@ -4,22 +4,24 @@ from sqlmodel import SQLModel, Field, create_engine, Session, select
 from typing import Annotated
 from enum import Enum
 from datetime import date
+import os
+from dotenv import load_dotenv
 
 class TutorCreate(SQLModel):
-    nome: str = Field(min_length=1) 
-    email: str
+    nome: str = Field(min_length=1, max_length=100)
+    email: str = Field(max_length=150)
     telefone: str = Field(regex=r"^\d+$", max_length=11)
 
 class Tutor(TutorCreate, table=True):
-    id: int = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
 
 class AnimalCreate(SQLModel):
     id_tutor: int = Field(foreign_key="tutor.id")
-    nome: str = Field(min_length=1) 
-    especie: str = Field(min_length=1) 
-    raca: str = Field(min_length=1) 
-    sexo: str = Field(min_length=1, max_length=1) 
-    idade: str
+    nome: str = Field(min_length=1, max_length=100)
+    especie: str = Field(min_length=1, max_length=50)
+    raca: str = Field(min_length=1, max_length=50)
+    sexo: str = Field(min_length=1, max_length=1)
+    idade: str = Field(max_length=20)
     peso: float = Field(gt=0, lt=500)
 
 class Animal(AnimalCreate, table=True):
@@ -31,35 +33,37 @@ class TipoProcedimento(str, Enum):
     exame = "Exame"
     consulta = "Consulta"
     cirurgia = "Cirurgia"
-    
+
 class ProcedimentoCreate(SQLModel):
     id_animal: int = Field(foreign_key="animal.id")
-    nome: str = Field(min_length=1) 
-    descricao: str = Field(min_length=1) 
+    nome: str = Field(min_length=1, max_length=100)
+    descricao: str = Field(min_length=1, max_length=500)
     preco: float
     tipo: TipoProcedimento
     data: date
+
     @field_validator("data")
     @classmethod
     def data_nao_pode_ser_passada(cls, valor):
         if valor < date.today():
             raise ValueError("A data não pode ser anterior ao dia de hoje.")
         return valor
-    
+
 class ProcedimentoEdit(SQLModel):
-    nome: str | None = None
-    descricao: str | None = None
+    nome: str | None = Field(default=None, min_length=1, max_length=100)
+    descricao: str | None = Field(default=None, min_length=1, max_length=500)
     preco: float | None = None
     tipo: TipoProcedimento | None = None
     data: date | None = None
     id_animal: int | None = None
 
 class Procedimento(ProcedimentoCreate, table=True):
-    id: int = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
 
 
 
-engine = create_engine("sqlite:///vetsys.db")
+load_dotenv()
+engine = create_engine(os.getenv("DATABASE_URL"))
 SQLModel.metadata.create_all(engine)
 
 def get_session():

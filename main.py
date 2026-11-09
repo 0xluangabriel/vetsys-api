@@ -45,6 +45,7 @@ class ProcedimentoCreate(SQLModel):
         if valor < date.today():
             raise ValueError("A data não pode ser anterior ao dia de hoje.")
         return valor
+    
 class ProcedimentoEdit(SQLModel):
     nome: str | None = None
     descricao: str | None = None

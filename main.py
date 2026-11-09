@@ -77,8 +77,8 @@ SessionDep = Annotated[Session, Depends(get_session)]
 
 #----------PROCEDIMENTOS----------
 @app.get("/procedimentos")
-def listar_procedimentos(session: SessionDep):
-    return session.exec(select(Procedimento)).all()
+def listar_procedimentos(session: SessionDep, skip: int = 0, limit: int = 10):
+    return session.exec(select(Procedimento).offset(skip).limit(limit)).all()
 
 @app.post("/procedimentos", status_code=201)
 def criar_procedimento(dados: ProcedimentoCreate, session: SessionDep):
@@ -137,8 +137,8 @@ def apagar_procedimento(id_procedimento: int, session: SessionDep):
 
 #----------ANIMAIS----------
 @app.get("/animais")
-def listar_animais(session: SessionDep):
-    return session.exec(select(Animal)).all()
+def listar_animais(session: SessionDep, skip: int = 0, limit: int = 10):
+    return session.exec(select(Animal).offset(skip).limit(limit)).all()
 
 @app.post("/animais", status_code=201)
 def criar_animal(dados: AnimalCreate, session: SessionDep):
@@ -182,6 +182,22 @@ def apagar_animal(id_animal: int, session: SessionDep):
     session.commit()
     return {"mensagem": "Animal apagado com sucesso."}
 
+@app.get("/animais/{id_animal}/procedimentos")
+def buscar_procedimentos_animal(id_animal: int, session: SessionDep):
+    animal = session.get(Animal, id_animal)
+    if animal is None:
+        raise HTTPException(status_code=404, detail="ID de animal inválido ou não encontrado")
+    procedimentos = session.exec(select(Procedimento).where(Procedimento.id_animal == animal.id).order_by(Procedimento.data)).all()
+    return procedimentos
+
+@app.get("/animais/{id_animal}/vacinas")
+def buscar_vacinas_animal(id_animal: int, session: SessionDep):
+    animal = session.get(Animal, id_animal)
+    if animal is None:
+        raise HTTPException(status_code=404, detail="ID de animal inválido ou não encontrado")
+    vacinas = session.exec(select(Procedimento).where(Procedimento.id_animal == animal.id, Procedimento.tipo == TipoProcedimento.vacinacao).order_by(Procedimento.data)).all()
+    return vacinas
+
 #----------TUTORES----------
 @app.post("/tutores", status_code=201)
 def criar_tutor(dados: TutorCreate, session: SessionDep):
@@ -207,8 +223,8 @@ def atualizar_tutor(id_tutor: int, dados: TutorCreate, session: SessionDep):
     return tutor
 
 @app.get("/tutores")
-def listar_tutores(session: SessionDep):
-    return session.exec(select(Tutor)).all()
+def listar_tutores(session: SessionDep, skip: int = 0, limit: int = 10):
+    return session.exec(select(Tutor).offset(skip).limit(limit)).all()
 
 @app.get("/tutores/{id_tutor}")
 def buscar_tutor(id_tutor: int, session: SessionDep):
@@ -232,3 +248,11 @@ def apagar_tutor(id_tutor: int, session: SessionDep):
     session.delete(tutor)
     session.commit()
     return {"mensagem": "Tutor, seus animais e procedimentos foram excluídos com sucesso."}
+
+@app.get("/tutores/{id_tutor}/animais")
+def buscar_animais_tutor(id_tutor: int, session: SessionDep):
+    tutor = session.get(Tutor, id_tutor)
+    if tutor is None:
+        raise HTTPException(status_code=404, detail="Tutor inválido ou não encontrado")
+    animais = session.exec(select(Animal).where(Animal.id_tutor == tutor.id)).all()
+    return animais

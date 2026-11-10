@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field, create_engine, Session, select, Relationship
 from datetime import date, datetime, timedelta, timezone
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel, field_validator
 from sqlalchemy.exc import IntegrityError
@@ -16,10 +16,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITMO = "HS256"
 MINUTOS_EXPIRACAO = 30
 
-def criar_token(email: str) -> str:
-    expira = datetime.now(timezone.utc) + timedelta(minutes=MINUTOS_EXPIRACAO)
-    payload = {"sub": email, "exp": expira}
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITMO)
+
 
 class UsuarioCreate(SQLModel):
     nome: str = Field(min_length=1, max_length=100)
@@ -119,6 +116,12 @@ load_dotenv()
 engine = create_engine(os.getenv("DATABASE_URL"))
 SQLModel.metadata.create_all(engine)
 password_hash = PasswordHash.recommended()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+def criar_token(email: str) -> str:
+    expira = datetime.now(timezone.utc) + timedelta(minutes=MINUTOS_EXPIRACAO)
+    payload = {"sub": email, "exp": expira}
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITMO)
 
 def get_session():
     with Session(engine) as session:
@@ -126,6 +129,24 @@ def get_session():
 
 app = FastAPI(title="Vetsys API", description="API para gerenciamento de tutores e pets", version="1.7.0")
 SessionDep = Annotated[Session, Depends(get_session)]
+
+def get_usuario_atual(token: Annotated[str, Depends(oauth2_scheme)], session: SessionDep) -> Usuario:
+    erro = HTTPException(
+        status_code=401,
+        detail="Não autenticado",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITMO])
+    except jwt.InvalidTokenError:
+        raise erro
+    email = payload.get("sub")
+    usuario = session.exec(select(Usuario).where(Usuario.email == email)).first()
+    if usuario is None:
+        raise erro
+    return usuario
+
+UsuarioAtual = Annotated[Usuario, Depends(get_usuario_atual)]
 
 #----------USUARIOS----------
 @app.post("/auth/registro", status_code=201, response_model=UsuarioOut)
@@ -150,7 +171,7 @@ def login(form: Annotated[OAuth2PasswordRequestForm, Depends()], session: Sessio
 #----------PROCEDIMENTOS----------
 @app.get("/procedimentos")
 def listar_procedimentos(session: SessionDep, skip: int = 0, limit: int = 10):
-    return session.exec(select(Procedimento).offset(skip).limit(limit)).all()
+    return session.exec(select(Procedimento).order_by(Procedimento.id).offset(skip).limit(limit)).all()
 
 @app.post("/procedimentos", status_code=201)
 def criar_procedimento(dados: ProcedimentoCreate, session: SessionDep):
@@ -211,8 +232,8 @@ def apagar_procedimento(id_procedimento: int, session: SessionDep):
 
 #----------ANIMAIS----------
 @app.get("/animais")
-def listar_animais(session: SessionDep, skip: int = 0, limit: int = 10):
-    return session.exec(select(Animal).offset(skip).limit(limit)).all()
+def listar_animais(session: SessionDep, usuario: UsuarioAtual, skip: int = 0, limit: int = 10):
+    return session.exec(select(Animal).order_by(Animal.id).offset(skip).limit(limit)).all()
 
 @app.post("/animais", status_code=201)
 def criar_animal(dados: AnimalCreate, session: SessionDep):
@@ -323,7 +344,7 @@ def atualizar_tutor(id_tutor: int, dados: TutorCreate, session: SessionDep):
 
 @app.get("/tutores")
 def listar_tutores(session: SessionDep, skip: int = 0, limit: int = 10):
-    return session.exec(select(Tutor).offset(skip).limit(limit)).all()
+    return session.exec(select(Tutor).order_by(Tutor.id).offset(skip).limit(limit)).all()
 
 @app.get("/tutores/{id_tutor}")
 def buscar_tutor(id_tutor: int, session: SessionDep):

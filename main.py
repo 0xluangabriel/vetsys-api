@@ -12,6 +12,8 @@ import os
 import jwt
 
 
+load_dotenv()
+
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITMO = "HS256"
 MINUTOS_EXPIRACAO = 30
@@ -34,11 +36,25 @@ class UsuarioOut(SQLModel):
     nome: str
     email: str
 
+class PerfilUsuario(str, Enum):
+    comum = "comum"
+    funcionario = "funcionario"
+    admin = "admin"
+
+class PerfilEdit(SQLModel):
+    perfil: PerfilUsuario
+
 class Usuario(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     nome: str = Field(max_length=100)
     email: str = Field(max_length=150, unique=True)
     senha_hash: str = Field(max_length=255)
+    perfil: PerfilUsuario = Field(default=PerfilUsuario.comum)
+
+class UsuarioAdminOut(SQLModel):
+    id: int
+    nome: str
+    email: str
 
 class TutorCreate(SQLModel):
     nome: str = Field(min_length=1, max_length=100)
@@ -112,7 +128,6 @@ class Procedimento(ProcedimentoCreate, table=True):
     animal: Animal | None = Relationship(back_populates="procedimentos")
 
 
-load_dotenv()
 engine = create_engine(os.getenv("DATABASE_URL"))
 SQLModel.metadata.create_all(engine)
 password_hash = PasswordHash.recommended()
@@ -148,7 +163,22 @@ def get_usuario_atual(token: Annotated[str, Depends(oauth2_scheme)], session: Se
 
 UsuarioAtual = Annotated[Usuario, Depends(get_usuario_atual)]
 
-#----------USUARIOS----------
+def get_funcionario(usuario: UsuarioAtual) -> Usuario:
+    if usuario.perfil not in (PerfilUsuario.funcionario, PerfilUsuario.admin):
+        raise HTTPException(status_code=403, detail="Acesso restrito a funcionários.")
+    return usuario
+
+FuncionarioAtual = Annotated[Usuario, Depends(get_funcionario)]
+
+def get_admin(usuario: UsuarioAtual) -> Usuario:
+    if usuario.perfil != PerfilUsuario.admin:
+        raise HTTPException(status_code=403, detail="Acesso restrito a administradores.")
+    return usuario
+
+AdminAtual = Annotated[Usuario, Depends(get_admin)]
+
+#----------AUTH----------
+
 @app.post("/auth/registro", status_code=201, response_model=UsuarioOut)
 def registrar(dados: UsuarioCreate, session: SessionDep):
     usuario = Usuario(nome=dados.nome, email=dados.email, senha_hash=password_hash.hash(dados.senha))
@@ -168,13 +198,50 @@ def login(form: Annotated[OAuth2PasswordRequestForm, Depends()], session: Sessio
         raise HTTPException(status_code=401, detail="E-mail ou senha incorretos.")
     return {"access_token": criar_token(usuario.email), "token_type": "bearer"}
 
+#----------ADMIN----------
+
+@app.get("/admin/funcionarios", response_model=list[UsuarioAdminOut])
+def listar_funcionarios(session: SessionDep, usuario: AdminAtual, skip: int = 0, limit: int = 10):
+    return session.exec(select(Usuario).order_by(Usuario.id).where(Usuario.perfil == PerfilUsuario.funcionario).offset(skip).limit(limit)).all()
+
+@app.get("/admin/usuarios", response_model=list[UsuarioAdminOut])
+def listar_usuarios(session: SessionDep, usuario: AdminAtual, skip: int = 0, limit: int = 10):
+    return session.exec(select(Usuario).order_by(Usuario.id).offset(skip).limit(limit)).all()
+
+@app.patch("/admin/funcionarios/{id_usuario}", response_model=UsuarioAdminOut)
+def definir_funcionario(id_usuario: int, session: SessionDep, usuario: AdminAtual):
+    alvo = session.get(Usuario, id_usuario)
+    if alvo is None:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+    if alvo.id == usuario.id:
+        raise HTTPException(status_code=400, detail="Você não pode se rebaixar de admin.")
+    alvo.perfil = PerfilUsuario.funcionario
+    session.add(alvo)
+    session.commit()
+    session.refresh(alvo)
+    return alvo
+
+@app.patch("/admin/comum/{id_usuario}", response_model=UsuarioAdminOut)
+def definir_comum(id_usuario: int, session: SessionDep, usuario: AdminAtual):
+    alvo = session.get(Usuario, id_usuario)
+    if alvo is None:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+    if alvo.id == usuario.id:
+        raise HTTPException(status_code=400, detail="Você não pode se rebaixar de admin.")
+    alvo.perfil = PerfilUsuario.comum
+    session.add(alvo)
+    session.commit()
+    session.refresh(alvo)
+    return alvo
+
 #----------PROCEDIMENTOS----------
+
 @app.get("/procedimentos")
-def listar_procedimentos(session: SessionDep, skip: int = 0, limit: int = 10):
+def listar_procedimentos(session: SessionDep, usuario: FuncionarioAtual, skip: int = 0, limit: int = 10):
     return session.exec(select(Procedimento).order_by(Procedimento.id).offset(skip).limit(limit)).all()
 
 @app.post("/procedimentos", status_code=201)
-def criar_procedimento(dados: ProcedimentoCreate, session: SessionDep):
+def criar_procedimento(dados: ProcedimentoCreate, session: SessionDep, usuario: FuncionarioAtual):
     if session.get(Animal, dados.id_animal) is None:
         raise HTTPException(status_code=404, detail="Animal não encontrado.")
     
@@ -185,7 +252,7 @@ def criar_procedimento(dados: ProcedimentoCreate, session: SessionDep):
     return procedimento
 
 @app.put("/procedimentos/{id_procedimento}")
-def atualizar_procedimento(id_procedimento: int, dados: ProcedimentoCreate, session: SessionDep):
+def atualizar_procedimento(id_procedimento: int, dados: ProcedimentoCreate, session: SessionDep, usuario: FuncionarioAtual):
     procedimento = session.get(Procedimento, id_procedimento)
     if procedimento is None:
         raise HTTPException(status_code=404, detail="Procedimento não encontrado")
@@ -200,7 +267,7 @@ def atualizar_procedimento(id_procedimento: int, dados: ProcedimentoCreate, sess
     return procedimento
 
 @app.patch("/procedimentos/{id_procedimento}")
-def att_parte_procedimento(id_procedimento: int, dados: ProcedimentoEdit, session: SessionDep):
+def att_parte_procedimento(id_procedimento: int, dados: ProcedimentoEdit, session: SessionDep, usuario: FuncionarioAtual):
     procedimento = session.get(Procedimento, id_procedimento)
     if procedimento is None:
         raise HTTPException(status_code=404, detail="Procedimento não encontrado")
@@ -215,14 +282,14 @@ def att_parte_procedimento(id_procedimento: int, dados: ProcedimentoEdit, sessio
     return procedimento
 
 @app.get("/procedimentos/{id_procedimento}")
-def buscar_procedimento(id_procedimento: int, session: SessionDep):
+def buscar_procedimento(id_procedimento: int, session: SessionDep, usuario: FuncionarioAtual):
     procedimento = session.get(Procedimento, id_procedimento)
     if procedimento is None:
         raise HTTPException(status_code=404, detail="Procedimento não encontrado")
     return procedimento
 
 @app.delete("/procedimentos/{id_procedimento}")
-def apagar_procedimento(id_procedimento: int, session: SessionDep):
+def apagar_procedimento(id_procedimento: int, session: SessionDep, usuario: FuncionarioAtual):
     procedimento = session.get(Procedimento, id_procedimento)
     if procedimento is None:
         raise HTTPException(status_code=404, detail="Procedimento não encontrado.")
@@ -232,11 +299,11 @@ def apagar_procedimento(id_procedimento: int, session: SessionDep):
 
 #----------ANIMAIS----------
 @app.get("/animais")
-def listar_animais(session: SessionDep, usuario: UsuarioAtual, skip: int = 0, limit: int = 10):
+def listar_animais(session: SessionDep, usuario: FuncionarioAtual, skip: int = 0, limit: int = 10):
     return session.exec(select(Animal).order_by(Animal.id).offset(skip).limit(limit)).all()
 
 @app.post("/animais", status_code=201)
-def criar_animal(dados: AnimalCreate, session: SessionDep):
+def criar_animal(dados: AnimalCreate, session: SessionDep, usuario: FuncionarioAtual):
     if session.get(Tutor, dados.id_tutor) is None:
         raise HTTPException(status_code=404, detail="ID de Tutor inválido ou não encontrado.")
     animal = Animal(**dados.model_dump())
@@ -246,7 +313,7 @@ def criar_animal(dados: AnimalCreate, session: SessionDep):
     return animal
 
 @app.put("/animais/{id_animal}")
-def atualizar_animal(id_animal: int, dados: AnimalCreate, session: SessionDep):
+def atualizar_animal(id_animal: int, dados: AnimalCreate, session: SessionDep, usuario: FuncionarioAtual):
     animal = session.get(Animal, id_animal)
     if animal is None:
         raise HTTPException(status_code=404, detail="ID de Animal inválido ou não encontrado.")
@@ -262,26 +329,23 @@ def atualizar_animal(id_animal: int, dados: AnimalCreate, session: SessionDep):
     return animal
 
 @app.get("/animais/{id_animal}")
-def buscar_animal(id_animal: int, session: SessionDep):
+def buscar_animal(id_animal: int, session: SessionDep, usuario: FuncionarioAtual):
     animal = session.get(Animal, id_animal)
     if animal is None:
         raise HTTPException(status_code=404, detail="Animal não encontrado")
     return animal
 
 @app.delete("/animais/{id_animal}")
-def apagar_animal(id_animal: int, session: SessionDep):
+def apagar_animal(id_animal: int, session: SessionDep, usuario: FuncionarioAtual):
     animal = session.get(Animal, id_animal)
     if animal is None:
         raise HTTPException(status_code=404, detail="Animal não encontrado.")
-    procedimentos = session.exec(select(Procedimento).where(Procedimento.id_animal == animal.id)).all()
-    for procedimento in procedimentos:
-        session.delete(procedimento)
     session.delete(animal)
     session.commit()
     return {"mensagem": "Animal apagado com sucesso."}
 
 @app.get("/animais/{id_animal}/procedimentos")
-def buscar_procedimentos_animal(id_animal: int, session: SessionDep):
+def buscar_procedimentos_animal(id_animal: int, session: SessionDep, usuario: FuncionarioAtual):
     animal = session.get(Animal, id_animal)
     if animal is None:
         raise HTTPException(status_code=404, detail="ID de animal inválido ou não encontrado")
@@ -289,7 +353,7 @@ def buscar_procedimentos_animal(id_animal: int, session: SessionDep):
     return procedimentos
 
 @app.get("/animais/{id_animal}/vacinas")
-def buscar_vacinas_animal(id_animal: int, session: SessionDep):
+def buscar_vacinas_animal(id_animal: int, session: SessionDep, usuario: FuncionarioAtual):
     animal = session.get(Animal, id_animal)
     if animal is None:
         raise HTTPException(status_code=404, detail="ID de animal inválido ou não encontrado")
@@ -297,7 +361,7 @@ def buscar_vacinas_animal(id_animal: int, session: SessionDep):
     return vacinas
 
 @app.patch("/animais/{id_animal}")
-def att_parte_animal(id_animal: int, dados: AnimalEdit, session: SessionDep):
+def att_parte_animal(id_animal: int, dados: AnimalEdit, session: SessionDep, usuario: FuncionarioAtual):
     animal = session.get(Animal, id_animal)
     if animal is None:
         raise HTTPException(status_code=404, detail="Animal não encontrado")
@@ -312,7 +376,7 @@ def att_parte_animal(id_animal: int, dados: AnimalEdit, session: SessionDep):
 
 #----------TUTORES----------
 @app.post("/tutores", status_code=201)
-def criar_tutor(dados: TutorCreate, session: SessionDep):
+def criar_tutor(dados: TutorCreate, session: SessionDep, usuario: FuncionarioAtual):
     tutor = Tutor(**dados.model_dump())
     if dados.email and session.exec(select(Tutor).where(Tutor.email == dados.email)).first():
         raise HTTPException(status_code=409, detail="Email já cadastrado")
@@ -326,7 +390,7 @@ def criar_tutor(dados: TutorCreate, session: SessionDep):
     return tutor
 
 @app.put("/tutores/{id_tutor}")
-def atualizar_tutor(id_tutor: int, dados: TutorCreate, session: SessionDep):
+def atualizar_tutor(id_tutor: int, dados: TutorCreate, session: SessionDep, usuario: FuncionarioAtual):
     tutor = session.get(Tutor, id_tutor)
     if tutor is None:
         raise HTTPException(status_code=404, detail="Tutor não encontrado")
@@ -343,40 +407,34 @@ def atualizar_tutor(id_tutor: int, dados: TutorCreate, session: SessionDep):
     return tutor
 
 @app.get("/tutores")
-def listar_tutores(session: SessionDep, skip: int = 0, limit: int = 10):
+def listar_tutores(session: SessionDep, usuario: FuncionarioAtual, skip: int = 0, limit: int = 10):
     return session.exec(select(Tutor).order_by(Tutor.id).offset(skip).limit(limit)).all()
 
 @app.get("/tutores/{id_tutor}")
-def buscar_tutor(id_tutor: int, session: SessionDep):
+def buscar_tutor(id_tutor: int, session: SessionDep, usuario: FuncionarioAtual):
     tutor = session.get(Tutor, id_tutor)
     if tutor is None:
         raise HTTPException(status_code=404, detail="Tutor não encontrado")
     return tutor
 
 @app.delete("/tutores/{id_tutor}")
-def apagar_tutor(id_tutor: int, session: SessionDep):
+def apagar_tutor(id_tutor: int, session: SessionDep, usuario: FuncionarioAtual):
     tutor = session.get(Tutor, id_tutor)
     if tutor is None:
         raise HTTPException(status_code=404, detail="Tutor não encontrado")
-    animais = session.exec(select(Animal).where(Animal.id_tutor == tutor.id)).all()
-    for animal in animais:
-        procedimentos = session.exec(select(Procedimento).where(Procedimento.id_animal == animal.id)).all()
-        for procedimento in procedimentos:
-            session.delete(procedimento)
-        session.delete(animal)
     session.delete(tutor)
     session.commit()
     return {"mensagem": "Tutor, seus animais e procedimentos foram excluídos com sucesso."}
 
 @app.get("/tutores/{id_tutor}/animais")
-def buscar_animais_tutor(id_tutor: int, session: SessionDep):
+def buscar_animais_tutor(id_tutor: int, session: SessionDep, usuario: FuncionarioAtual):
     tutor = session.get(Tutor, id_tutor)
     if tutor is None:
         raise HTTPException(status_code=404, detail="Tutor inválido ou não encontrado")
     return tutor.animais
 
 @app.patch("/tutores/{id_tutor}")
-def att_parte_tutor(id_tutor: int, dados: TutorEdit, session: SessionDep):
+def att_parte_tutor(id_tutor: int, dados: TutorEdit, session: SessionDep, usuario: FuncionarioAtual):
     tutor = session.get(Tutor, id_tutor)
     if tutor is None:
         raise HTTPException(status_code=404, detail="Tutor não encontrado")

@@ -1,7 +1,8 @@
 from sqlmodel import SQLModel, Field, create_engine, Session, select, Relationship
-from datetime import date, datetime, timedelta, timezone
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from datetime import date, datetime, timedelta, timezone
 from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, field_validator
 from sqlalchemy.exc import IntegrityError
 from pwdlib import PasswordHash
@@ -10,7 +11,6 @@ from typing import Annotated
 from enum import Enum
 import os
 import jwt
-
 
 load_dotenv()
 
@@ -55,6 +55,7 @@ class UsuarioAdminOut(SQLModel):
     id: int
     nome: str
     email: str
+    perfil: PerfilUsuario
 
 class TutorCreate(SQLModel):
     nome: str = Field(min_length=1, max_length=100)
@@ -142,8 +143,15 @@ def get_session():
     with Session(engine) as session:
         yield session
 
-app = FastAPI(title="Vetsys API", description="API para gerenciamento de tutores e pets", version="1.7.0")
+app = FastAPI(title="Vetsys API", description="API para gerenciamento de tutores e pets", version="1.9.0")
 SessionDep = Annotated[Session, Depends(get_session)]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5500", "http://127.0.0.1:5500"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+   )
 
 def get_usuario_atual(token: Annotated[str, Depends(oauth2_scheme)], session: SessionDep) -> Usuario:
     erro = HTTPException(
@@ -219,7 +227,7 @@ def definir_funcionario(id_usuario: int, session: SessionDep, usuario: AdminAtua
     session.add(alvo)
     session.commit()
     session.refresh(alvo)
-    return {"mensagem": "Usuário definido como funcionário."}
+    return alvo
 
 @app.patch("/admin/usuarios/{id_usuario}", response_model=UsuarioAdminOut)
 def definir_comum(id_usuario: int, session: SessionDep, usuario: AdminAtual):
@@ -232,7 +240,7 @@ def definir_comum(id_usuario: int, session: SessionDep, usuario: AdminAtual):
     session.add(alvo)
     session.commit()
     session.refresh(alvo)
-    return {"mensagem": "Usuário definido como comum."}
+    return alvo
 
 @app.delete("/admin/usuarios/{id_usuario}")
 def excluir_usuario(id_usuario: int, session: SessionDep, usuario: AdminAtual):

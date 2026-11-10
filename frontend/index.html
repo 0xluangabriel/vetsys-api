@@ -1,0 +1,1091 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VetSys</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #F3F7F5;
+  --surface: #FFFFFF;
+  --mint: #DCEFE7;
+  --mint-2: #ECF6F1;
+  --pine: #1D6B57;
+  --pine-dark: #123F34;
+  --ink: #132E28;
+  --muted: #557069;
+  --line: #D2E2DB;
+  --sun: #F2B84B;
+  --sun-soft: #FDF2DA;
+  --sun-ink: #7A5208;
+  --danger: #B23A26;
+  --danger-soft: #FBE6E1;
+  --r-s: 8px;
+  --r-m: 12px;
+  --r-l: 22px;
+  --shadow: 0 1px 2px rgba(18, 63, 52, .06), 0 8px 24px rgba(18, 63, 52, .08);
+  --display: "Bricolage Grotesque", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--paper); color: var(--ink); font: 16px/1.5 var(--body); -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { font-family: var(--display); margin: 0; line-height: 1.15; letter-spacing: -0.01em; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+/* Botões */
+.btn { display: inline-flex; align-items: center; gap: .45rem; border: 1px solid transparent; border-radius: 999px; padding: .55rem 1.05rem; font-weight: 700; cursor: pointer; background: var(--pine); color: #fff; transition: background .15s; }
+.btn svg { width: 18px; height: 18px; }
+.btn:hover { background: var(--pine-dark); }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+.btn.ghost { background: transparent; color: var(--pine); border-color: var(--line); }
+.btn.ghost:hover { background: var(--mint-2); }
+.btn.danger { background: var(--danger); }
+.btn.danger:hover { background: #8F2D1D; }
+.btn.small { padding: .3rem .75rem; font-size: .875rem; }
+.btn.full { width: 100%; justify-content: center; padding: .75rem; }
+.link { background: none; border: 0; padding: .3rem .5rem; border-radius: var(--r-s); color: var(--pine); font-weight: 700; cursor: pointer; }
+.link:hover { background: var(--mint-2); }
+.link.danger { color: var(--danger); }
+.link.danger:hover { background: var(--danger-soft); }
+
+/* Login */
+.login { min-height: 100vh; display: grid; grid-template-columns: 1.1fr 1fr; }
+.login-brand { background: var(--pine-dark); color: #EAF6F1; padding: clamp(2rem, 6vw, 5rem); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }
+.wordmark { font-family: var(--display); font-weight: 800; font-size: clamp(3.5rem, 9vw, 7.5rem); letter-spacing: -0.045em; line-height: .9; margin: 0; }
+.login-brand p { max-width: 26ch; font-size: 1.3rem; color: #BFDDD1; margin: 1.25rem 0 0; }
+.login-brand .paws { position: absolute; right: -50px; bottom: -40px; width: min(440px, 70%); color: var(--sun); opacity: .14; }
+.brand-foot { font-size: .95rem !important; color: #8FB8A9 !important; position: relative; }
+.login-form-wrap { display: flex; align-items: center; justify-content: center; padding: 2rem; }
+.login-card { width: 100%; max-width: 400px; }
+.login-card h2 { font-size: 1.9rem; font-weight: 800; margin-bottom: .35rem; }
+.login-card .lead { color: var(--muted); margin: 0 0 1.5rem; }
+.tabs { display: flex; gap: .25rem; background: var(--mint); padding: .3rem; border-radius: 999px; margin-bottom: 2rem; }
+.tabs button { flex: 1; border: 0; background: transparent; padding: .55rem; border-radius: 999px; font-weight: 700; color: var(--muted); cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.nota { font-size: .88rem; color: var(--muted); margin: 1rem 0 0; }
+
+/* Formulários */
+.field { display: flex; flex-direction: column; gap: .35rem; margin-bottom: 1rem; }
+.field label { font-weight: 700; font-size: .92rem; }
+.field small { color: var(--muted); font-size: .82rem; }
+input, select, textarea { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-m); padding: .65rem .8rem; width: 100%; }
+textarea { min-height: 90px; resize: vertical; }
+input:focus, select:focus, textarea:focus { border-color: var(--pine); outline: none; box-shadow: 0 0 0 3px var(--mint); }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; }
+.form-grid .full { grid-column: 1 / -1; }
+.form-erro { background: var(--danger-soft); color: var(--danger); border-radius: var(--r-m); padding: .65rem .85rem; margin-bottom: 1rem; font-size: .92rem; }
+
+/* Estrutura do app */
+.app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+.sidebar { background: var(--mint); padding: 1.5rem 1rem; display: flex; flex-direction: column; gap: 2rem; position: sticky; top: 0; height: 100vh; }
+.side-logo { display: flex; align-items: center; gap: .55rem; font-family: var(--display); font-weight: 800; font-size: 1.65rem; color: var(--pine-dark); padding: 0 .5rem; letter-spacing: -0.035em; }
+.side-logo svg { width: 30px; height: 30px; color: var(--pine); }
+.nav { display: flex; flex-direction: column; gap: .2rem; }
+.nav button { display: flex; align-items: center; gap: .65rem; border: 0; background: transparent; text-align: left; padding: .65rem .75rem; border-radius: var(--r-m); font-weight: 700; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.nav button:hover { background: var(--mint-2); color: var(--ink); }
+.nav button[aria-current="page"] { background: var(--surface); color: var(--pine-dark); box-shadow: var(--shadow); }
+.nav svg { width: 20px; height: 20px; flex: none; }
+.side-user { margin-top: auto; padding: .75rem; border-radius: var(--r-m); background: var(--mint-2); font-size: .88rem; }
+.side-user span { color: var(--muted); }
+.side-user strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-user .link { margin-top: .35rem; padding-left: 0; }
+main { padding: clamp(1.25rem, 3vw, 2.75rem); min-width: 0; }
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.page-head h1 { font-size: clamp(2rem, 4vw, 2.75rem); font-weight: 800; letter-spacing: -0.03em; }
+.page-head p { margin: .35rem 0 0; color: var(--muted); }
+.toolbar { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+.search { position: relative; }
+.search input { padding-left: 2.2rem; border-radius: 999px; width: 220px; }
+.search svg { position: absolute; left: .8rem; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--muted); }
+
+/* Tabelas */
+.panel { background: var(--surface); border-radius: var(--r-l); box-shadow: var(--shadow); overflow: hidden; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+th { text-align: left; font-weight: 700; color: var(--muted); font-size: .85rem; padding: .85rem 1rem; border-bottom: 1px solid var(--line); background: var(--mint-2); white-space: nowrap; }
+td { padding: .8rem 1rem; border-bottom: 1px solid var(--line); vertical-align: middle; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover { background: #FAFCFB; }
+td .sub { display: block; color: var(--muted); font-size: .85rem; }
+.actions { display: flex; gap: .15rem; justify-content: flex-end; white-space: nowrap; }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pager { display: flex; justify-content: space-between; align-items: center; padding: .75rem 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+.pager div { display: flex; gap: .4rem; }
+.empty { padding: 3.5rem 1.5rem; text-align: center; }
+.empty h2 { font-size: 1.45rem; margin-bottom: .4rem; }
+.empty p { color: var(--muted); margin: 0 auto 1.25rem; max-width: 44ch; }
+.loading { padding: 3rem; text-align: center; color: var(--muted); margin: 0; }
+
+/* Etiquetas */
+.badge { display: inline-block; padding: .15rem .6rem; border-radius: 999px; font-size: .82rem; font-weight: 700; white-space: nowrap; }
+.t-vacinacao { background: var(--sun-soft); color: var(--sun-ink); }
+.t-castracao { background: #EDE7F7; color: #5B3F8C; }
+.t-exame { background: #E2EEF9; color: #24527F; }
+.t-consulta { background: var(--mint); color: var(--pine-dark); }
+.t-cirurgia { background: var(--danger-soft); color: var(--danger); }
+.p-admin { background: var(--pine-dark); color: #fff; }
+.p-funcionario { background: var(--mint); color: var(--pine-dark); }
+.p-comum { background: #EEF1F0; color: var(--muted); }
+
+/* Diálogos */
+dialog { border: 0; border-radius: var(--r-l); padding: 0; box-shadow: 0 24px 64px rgba(18, 63, 52, .25); width: min(560px, calc(100vw - 2rem)); color: var(--ink); background: var(--surface); }
+dialog::backdrop { background: rgba(19, 46, 40, .45); }
+.dlg-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1.25rem 1.5rem .5rem; }
+.dlg-head h2 { font-size: 1.5rem; font-weight: 800; }
+.dlg-body { padding: .75rem 1.5rem 0; }
+.dlg-body > p { margin: 0 0 .5rem; color: var(--muted); }
+.dlg-foot { display: flex; justify-content: flex-end; gap: .5rem; padding: 1rem 1.5rem 1.4rem; }
+.x { flex: none; border: 0; background: transparent; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 1.4rem; line-height: 1; color: var(--muted); }
+.x:hover { background: var(--mint-2); }
+
+/* Ficha do animal (painel lateral) */
+dialog.drawer { margin: 0 0 0 auto; height: 100vh; max-height: 100vh; width: min(520px, 100vw); border-radius: var(--r-l) 0 0 var(--r-l); }
+dialog.drawer[open] { animation: entra .22s ease-out; }
+@keyframes entra { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+.ficha { padding: 1.5rem 1.75rem 2rem; }
+.ficha-top { background: var(--pine-dark); color: #EAF6F1; margin: -1.5rem -1.75rem 1.5rem; padding: 1.75rem 1.75rem 1.9rem; position: relative; overflow: hidden; }
+.ficha-top .x { position: absolute; right: 1rem; top: 1rem; color: #BFDDD1; }
+.ficha-top .x:hover { background: rgba(255, 255, 255, .1); }
+.ficha-top h2 { font-size: 2.6rem; font-weight: 800; letter-spacing: -0.035em; padding-right: 2.5rem; }
+.ficha-top p { margin: .3rem 0 0; color: #BFDDD1; position: relative; }
+.ficha-top .paws { position: absolute; right: -20px; bottom: -30px; width: 150px; color: var(--sun); opacity: .16; }
+.dados { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; margin-bottom: 2rem; }
+.dado { background: var(--mint-2); border-radius: var(--r-m); padding: .65rem .8rem; }
+.dado span { display: block; font-size: .8rem; color: var(--muted); }
+.dado strong { font-size: 1.05rem; }
+.secao-titulo { font-size: 1.25rem; font-weight: 700; margin: 0 0 .85rem; }
+.carteira { border: 2px dashed var(--sun); background: var(--sun-soft); border-radius: var(--r-l); padding: 1rem; margin-bottom: 2rem; }
+.carteira ol { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+.carteira li { display: flex; align-items: center; gap: .9rem; background: var(--surface); border-radius: var(--r-m); padding: .6rem .8rem; }
+.carteira li div { min-width: 0; }
+.carteira li small { display: block; color: var(--muted); font-size: .84rem; }
+.selo { flex: none; width: 54px; height: 54px; border-radius: 50%; border: 2px solid var(--sun); display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: var(--display); line-height: 1; color: var(--sun-ink); transform: rotate(-8deg); }
+.selo b { font-size: 1.2rem; }
+.selo small { font-size: .7rem !important; color: var(--sun-ink) !important; }
+.selo.agendada { border-style: dashed; opacity: .75; }
+.carteira .vazio { margin: 0; color: var(--sun-ink); font-size: .92rem; }
+.historico { list-style: none; margin: 0 0 1.75rem; padding: 0 0 0 1rem; border-left: 2px solid var(--line); }
+.historico li { position: relative; padding: 0 0 1.1rem 1rem; }
+.historico li::before { content: ""; position: absolute; left: -1.42rem; top: .45rem; width: 10px; height: 10px; border-radius: 50%; background: var(--pine); border: 2px solid var(--surface); }
+.historico li.futuro::before { background: var(--sun); }
+.historico .quando { display: flex; align-items: center; gap: .5rem; font-size: .85rem; color: var(--muted); margin-bottom: .15rem; }
+.historico p { margin: .15rem 0 0; color: var(--muted); font-size: .92rem; }
+.lista-animais { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+.lista-animais li { display: flex; justify-content: space-between; align-items: center; gap: 1rem; background: var(--mint-2); border-radius: var(--r-m); padding: .75rem .9rem; }
+.lista-animais small { display: block; color: var(--muted); }
+
+/* Conta sem acesso */
+.aguardando { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+.aguardando .card { max-width: 480px; text-align: center; }
+.aguardando svg { width: 72px; height: 72px; color: var(--sun); margin-bottom: 1rem; }
+.aguardando h1 { font-size: 2rem; font-weight: 800; margin-bottom: .6rem; }
+.aguardando p { color: var(--muted); margin: 0 0 1.5rem; }
+.aguardando .botoes { display: flex; gap: .5rem; justify-content: center; }
+
+/* Avisos */
+.toasts { position: fixed; right: 1.25rem; bottom: 1.25rem; display: flex; flex-direction: column; gap: .5rem; z-index: 50; }
+.toast { background: var(--ink); color: #fff; padding: .75rem 1rem; border-radius: var(--r-m); box-shadow: var(--shadow); max-width: 360px; font-size: .93rem; }
+.toast.erro { background: var(--danger); }
+
+@media (max-width: 860px) {
+  .login { grid-template-columns: 1fr; }
+  .login-brand { padding: 2rem; }
+  .brand-foot { display: none; }
+  .app { grid-template-columns: 1fr; }
+  .sidebar { position: static; height: auto; flex-direction: row; align-items: center; gap: 1rem; padding: .75rem 1rem; overflow-x: auto; }
+  .nav { flex-direction: row; }
+  .side-user { margin: 0 0 0 auto; white-space: nowrap; background: transparent; padding: 0; }
+  .side-user span, .side-user strong { display: none; }
+  .form-grid { grid-template-columns: 1fr; }
+  .dados { grid-template-columns: 1fr 1fr; }
+  .search input { width: 100%; }
+  .search { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- Login e cadastro -->
+<div id="tela-login" class="login" hidden>
+  <section class="login-brand">
+    <div>
+      <h1 class="wordmark">VetSys</h1>
+      <p>Fichas, vacinas e agenda da clínica num lugar só.</p>
+    </div>
+    <p class="brand-foot">Painel da equipe da clínica</p>
+    <svg class="paws" viewBox="0 0 64 64" fill="currentColor" aria-hidden="true"><ellipse cx="13" cy="28" rx="5.5" ry="7.5" transform="rotate(-20 13 28)"/><ellipse cx="24" cy="15" rx="5.5" ry="8"/><ellipse cx="40" cy="15" rx="5.5" ry="8"/><ellipse cx="51" cy="28" rx="5.5" ry="7.5" transform="rotate(20 51 28)"/><path d="M32 30c-9 0-17 9.5-17 17.5 0 6 5 9 10 8 3-.6 4.5-2 7-2s4 1.4 7 2c5 1 10-2 10-8 0-8-8-17.5-17-17.5z"/></svg>
+  </section>
+  <section class="login-form-wrap">
+    <div class="login-card">
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" id="aba-entrar" aria-selected="true">Entrar</button>
+        <button type="button" role="tab" id="aba-criar" aria-selected="false">Criar conta</button>
+      </div>
+
+      <form id="form-entrar">
+        <h2>Entrar</h2>
+        <p class="lead">Use o e-mail e a senha da sua conta.</p>
+        <div class="form-erro" hidden></div>
+        <div class="field"><label for="le-email">E-mail</label><input id="le-email" name="email" type="email" autocomplete="username" required></div>
+        <div class="field"><label for="le-senha">Senha</label><input id="le-senha" name="senha" type="password" autocomplete="current-password" required></div>
+        <button class="btn full" type="submit">Entrar</button>
+      </form>
+
+      <form id="form-criar" hidden>
+        <h2>Criar conta</h2>
+        <p class="lead">Para membros da equipe da clínica.</p>
+        <div class="form-erro" hidden></div>
+        <div class="field"><label for="cr-nome">Nome</label><input id="cr-nome" name="nome" autocomplete="name" maxlength="100" required></div>
+        <div class="field"><label for="cr-email">E-mail</label><input id="cr-email" name="email" type="email" autocomplete="email" maxlength="150" required></div>
+        <div class="field"><label for="cr-senha">Senha</label><input id="cr-senha" name="senha" type="password" autocomplete="new-password" minlength="8" maxlength="128" required><small>No mínimo 8 caracteres.</small></div>
+        <button class="btn full" type="submit">Criar conta</button>
+        <p class="nota">Contas novas começam sem acesso aos dados. Um administrador libera o seu acesso.</p>
+      </form>
+    </div>
+  </section>
+</div>
+
+<!-- Conta sem permissão -->
+<div id="tela-aguardando" class="aguardando" hidden>
+  <div class="card">
+    <svg viewBox="0 0 64 64" fill="currentColor" aria-hidden="true"><ellipse cx="13" cy="28" rx="5.5" ry="7.5" transform="rotate(-20 13 28)"/><ellipse cx="24" cy="15" rx="5.5" ry="8"/><ellipse cx="40" cy="15" rx="5.5" ry="8"/><ellipse cx="51" cy="28" rx="5.5" ry="7.5" transform="rotate(20 51 28)"/><path d="M32 30c-9 0-17 9.5-17 17.5 0 6 5 9 10 8 3-.6 4.5-2 7-2s4 1.4 7 2c5 1 10-2 10-8 0-8-8-17.5-17-17.5z"/></svg>
+    <h1>Seu acesso ainda não foi liberado</h1>
+    <p>A conta <strong id="aguardando-email"></strong> foi criada, mas ainda não pode ver os dados da clínica. Peça a um administrador para liberar o seu acesso.</p>
+    <div class="botoes">
+      <button class="btn" type="button" id="btn-verificar">Verificar de novo</button>
+      <button class="btn ghost" type="button" id="btn-sair-aguardando">Sair</button>
+    </div>
+  </div>
+</div>
+
+<!-- Aplicação -->
+<div id="tela-app" class="app" hidden>
+  <aside class="sidebar">
+    <div class="side-logo">
+      <svg viewBox="0 0 64 64" fill="currentColor" aria-hidden="true"><ellipse cx="13" cy="28" rx="5.5" ry="7.5" transform="rotate(-20 13 28)"/><ellipse cx="24" cy="15" rx="5.5" ry="8"/><ellipse cx="40" cy="15" rx="5.5" ry="8"/><ellipse cx="51" cy="28" rx="5.5" ry="7.5" transform="rotate(20 51 28)"/><path d="M32 30c-9 0-17 9.5-17 17.5 0 6 5 9 10 8 3-.6 4.5-2 7-2s4 1.4 7 2c5 1 10-2 10-8 0-8-8-17.5-17-17.5z"/></svg>
+      VetSys
+    </div>
+    <nav class="nav" id="nav" aria-label="Seções"></nav>
+    <div class="side-user">
+      <span>Conectado como</span>
+      <strong id="usuario-email"></strong>
+      <button class="link" type="button" id="btn-sair">Sair</button>
+    </div>
+  </aside>
+  <main id="conteudo"></main>
+</div>
+
+<dialog id="dlg-form"></dialog>
+<dialog id="dlg-confirma"></dialog>
+<dialog id="dlg-ficha" class="drawer"></dialog>
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+<script>
+/* ===== Configuração: ajuste aqui se as suas rotas forem diferentes ===== */
+const CONFIG = {
+  API_URL: "http://127.0.0.1:8000",
+  LIMITE: 10,
+  ADMIN: {
+    listar: "/admin/usuarios",
+    promover: (id) => `/admin/funcionarios/${id}`,
+    rebaixar: (id) => `/admin/usuarios/${id}`,
+    excluir: (id) => `/admin/usuarios/${id}`,
+  },
+};
+
+const TIPOS = ["Vacinação", "Castração", "Exame", "Consulta", "Cirurgia"];
+const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const ROTULOS = {
+  nome: "Nome", email: "E-mail", telefone: "Telefone", senha: "Senha", especie: "Espécie",
+  raca: "Raça", sexo: "Sexo", idade: "Idade", peso: "Peso", id_tutor: "Tutor",
+  id_animal: "Paciente", descricao: "Descrição", preco: "Preço", tipo: "Tipo", data: "Data",
+  username: "E-mail", password: "Senha",
+};
+
+const PATA = '<svg viewBox="0 0 64 64" fill="currentColor" aria-hidden="true"><ellipse cx="13" cy="28" rx="5.5" ry="7.5" transform="rotate(-20 13 28)"/><ellipse cx="24" cy="15" rx="5.5" ry="8"/><ellipse cx="40" cy="15" rx="5.5" ry="8"/><ellipse cx="51" cy="28" rx="5.5" ry="7.5" transform="rotate(20 51 28)"/><path d="M32 30c-9 0-17 9.5-17 17.5 0 6 5 9 10 8 3-.6 4.5-2 7-2s4 1.4 7 2c5 1 10-2 10-8 0-8-8-17.5-17-17.5z"/></svg>';
+const traco = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const ICONES = {
+  tutores: traco('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>'),
+  animais: PATA,
+  procedimentos: traco('<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 11h6M9 15h4"/>'),
+  usuarios: traco('<path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/>'),
+  busca: traco('<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>'),
+  mais: traco('<path d="M12 5v14M5 12h14"/>'),
+};
+
+const estado = {
+  token: null,
+  email: "",
+  admin: false,
+  view: "tutores",
+  pagina: { tutores: 0, animais: 0, procedimentos: 0, usuarios: 0 },
+};
+
+/* ===== Utilitários ===== */
+const $ = (seletor, el = document) => el.querySelector(seletor);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const kg = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
+
+function guardar(chave, valor) {
+  try { valor == null ? sessionStorage.removeItem(chave) : sessionStorage.setItem(chave, valor); } catch (e) { /* sem armazenamento */ }
+}
+function lerGuardado(chave) {
+  try { return sessionStorage.getItem(chave); } catch (e) { return null; }
+}
+function hojeISO() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+function dataBR(iso) {
+  if (!iso) return "—";
+  const [a, m, d] = String(iso).split("-");
+  return `${d}/${m}/${a}`;
+}
+function fone(t) {
+  const s = String(t ?? "");
+  if (s.length === 11) return `(${s.slice(0, 2)}) ${s.slice(2, 7)}-${s.slice(7)}`;
+  if (s.length === 10) return `(${s.slice(0, 2)}) ${s.slice(2, 6)}-${s.slice(6)}`;
+  return s;
+}
+const sexo = (s) => ({ M: "Macho", F: "Fêmea" }[String(s).toUpperCase()] || s);
+const classeTipo = (t) => "t-" + String(t).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const badgeTipo = (t) => `<span class="badge ${classeTipo(t)}">${esc(t)}</span>`;
+const resumo = (txt, n = 70) => (String(txt ?? "").length > n ? String(txt).slice(0, n - 1) + "…" : String(txt ?? ""));
+
+function emailDoToken(token) {
+  try {
+    const parte = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(decodeURIComponent(escape(atob(parte)))).sub || "";
+  } catch (e) {
+    return "";
+  }
+}
+
+function toast(msg, erro = false) {
+  const el = document.createElement("div");
+  el.className = "toast" + (erro ? " erro" : "");
+  el.textContent = msg;
+  $("#toasts").appendChild(el);
+  setTimeout(() => el.remove(), erro ? 6000 : 3500);
+}
+function falhou(e) {
+  if (e.status === 401) return; // a sessão já foi encerrada e avisada
+  toast(e.message, true);
+}
+
+/* ===== Comunicação com a API ===== */
+class ApiError extends Error {
+  constructor(status, mensagem) { super(mensagem); this.status = status; }
+}
+
+function textoErro(dados, status) {
+  const d = dados && dados.detail;
+  if (typeof d === "string") return d;
+  if (Array.isArray(d)) {
+    return d.map((e) => {
+      const campo = (e.loc || []).slice(-1)[0];
+      const msg = String(e.msg || "").replace(/^Value error, /, "");
+      return ROTULOS[campo] ? `${ROTULOS[campo]}: ${msg}` : msg;
+    }).join("; ");
+  }
+  if (status === 403) return "Você não tem permissão para esta ação.";
+  return `A API respondeu com erro ${status}.`;
+}
+
+async function api(caminho, opcoes = {}) {
+  const headers = {};
+  let body;
+  if (opcoes.form) {
+    headers["Content-Type"] = "application/x-www-form-urlencoded";
+    body = new URLSearchParams(opcoes.form);
+  } else if (opcoes.json !== undefined) {
+    headers["Content-Type"] = "application/json";
+    body = JSON.stringify(opcoes.json);
+  }
+  if (estado.token) headers.Authorization = `Bearer ${estado.token}`;
+
+  let resposta;
+  try {
+    resposta = await fetch(CONFIG.API_URL + caminho, { method: opcoes.metodo || "GET", headers, body });
+  } catch (e) {
+    throw new ApiError(0, `Não foi possível falar com a API em ${CONFIG.API_URL}. Confira se ela está rodando e se o CORS está liberado.`);
+  }
+  if (resposta.status === 204) return null;
+
+  let dados = null;
+  try { dados = await resposta.json(); } catch (e) { /* resposta sem corpo */ }
+
+  if (!resposta.ok) {
+    if (resposta.status === 401 && !opcoes.login) sair("Sua sessão expirou. Entre de novo.");
+    throw new ApiError(resposta.status, textoErro(dados, resposta.status));
+  }
+  return dados;
+}
+
+/* ===== Telas e sessão ===== */
+function mostrarTela(id) {
+  ["tela-login", "tela-aguardando", "tela-app"].forEach((t) => { $("#" + t).hidden = t !== id; });
+}
+
+function fecharDialogos() {
+  document.querySelectorAll("dialog[open]").forEach((d) => d.close());
+}
+
+function sair(mensagem) {
+  estado.token = null;
+  estado.email = "";
+  estado.admin = false;
+  guardar("vetsys_token", null);
+  fecharDialogos();
+  mostrarTela("tela-login");
+  if (mensagem) toast(mensagem, true);
+}
+
+function trocarAba(qual) {
+  const entrar = qual === "entrar";
+  $("#aba-entrar").setAttribute("aria-selected", String(entrar));
+  $("#aba-criar").setAttribute("aria-selected", String(!entrar));
+  $("#form-entrar").hidden = !entrar;
+  $("#form-criar").hidden = entrar;
+}
+
+async function entrar(email, senha) {
+  const r = await api("/auth/login", { metodo: "POST", form: { username: email, password: senha }, login: true });
+  estado.token = r.access_token;
+  estado.email = emailDoToken(r.access_token) || email;
+  guardar("vetsys_token", estado.token);
+  await iniciar();
+}
+
+async function iniciar() {
+  try {
+    await api("/tutores?skip=0&limit=1");
+  } catch (e) {
+    if (e.status === 403) {
+      $("#aguardando-email").textContent = estado.email;
+      mostrarTela("tela-aguardando");
+      return;
+    }
+    if (e.status === 401) return;
+    mostrarTela("tela-login");
+    toast(e.message, true);
+    return;
+  }
+  try {
+    await api(`${CONFIG.ADMIN.listar}?skip=0&limit=1`);
+    estado.admin = true;
+  } catch (e) {
+    estado.admin = false;
+  }
+  $("#usuario-email").textContent = estado.email;
+  montarNav();
+  mostrarTela("tela-app");
+  irPara(estado.view);
+}
+
+/* ===== Navegação ===== */
+const VIEWS = {
+  tutores: { titulo: "Tutores", render: () => verTutores() },
+  animais: { titulo: "Animais", render: () => verAnimais() },
+  procedimentos: { titulo: "Procedimentos", render: () => verProcedimentos() },
+  usuarios: { titulo: "Usuários", render: () => verUsuarios(), admin: true },
+};
+
+function montarNav() {
+  const nav = $("#nav");
+  nav.innerHTML = Object.entries(VIEWS)
+    .filter(([, v]) => !v.admin || estado.admin)
+    .map(([chave, v]) => `<button type="button" data-view="${chave}">${ICONES[chave]}<span>${v.titulo}</span></button>`)
+    .join("");
+  nav.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => irPara(b.dataset.view)));
+}
+
+function irPara(view) {
+  if (!VIEWS[view] || (VIEWS[view].admin && !estado.admin)) view = "tutores";
+  estado.view = view;
+  $("#nav").querySelectorAll("button").forEach((b) => {
+    if (b.dataset.view === view) b.setAttribute("aria-current", "page");
+    else b.removeAttribute("aria-current");
+  });
+  VIEWS[view].render();
+}
+
+/* ===== Peças de página ===== */
+function montarPagina({ titulo, descricao, botao, aoClicar }) {
+  $("#conteudo").innerHTML = `
+    <header class="page-head">
+      <div><h1>${esc(titulo)}</h1><p>${esc(descricao)}</p></div>
+      <div class="toolbar">
+        <label class="search">${ICONES.busca}<input type="search" id="busca" placeholder="Buscar nesta página" aria-label="Buscar nesta página"></label>
+        ${botao ? `<button class="btn" type="button" id="btn-novo">${ICONES.mais}${esc(botao)}</button>` : ""}
+      </div>
+    </header>
+    <div class="panel" id="painel"><p class="loading">Carregando…</p></div>`;
+  if (botao) $("#btn-novo").addEventListener("click", aoClicar);
+  $("#busca").addEventListener("input", (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    document.querySelectorAll("#painel tbody tr").forEach((tr) => {
+      tr.hidden = Boolean(q) && !tr.textContent.toLowerCase().includes(q);
+    });
+  });
+}
+
+function tabela(colunas, linhas) {
+  const ths = colunas.map((c) => (typeof c === "string" ? `<th>${c}</th>` : `<th class="num">${c.t}</th>`)).join("");
+  return `<div class="table-wrap"><table><thead><tr>${ths}</tr></thead><tbody>${linhas}</tbody></table></div>`;
+}
+
+function paginador(quantidade) {
+  const p = estado.pagina[estado.view];
+  return `<footer class="pager"><span>Página ${p + 1}</span><div>
+    <button class="btn ghost small" type="button" data-pag="-1" ${p === 0 ? "disabled" : ""}>Anterior</button>
+    <button class="btn ghost small" type="button" data-pag="1" ${quantidade < CONFIG.LIMITE ? "disabled" : ""}>Próxima</button>
+  </div></footer>`;
+}
+
+function preencherPainel(html, acoes = {}) {
+  const painel = $("#painel");
+  painel.innerHTML = html;
+  painel.querySelectorAll("[data-pag]").forEach((b) => b.addEventListener("click", () => {
+    estado.pagina[estado.view] += Number(b.dataset.pag);
+    irPara(estado.view);
+  }));
+  painel.querySelectorAll("[data-acao]").forEach((b) => b.addEventListener("click", () => acoes[b.dataset.acao](Number(b.dataset.id))));
+}
+
+function painelVazio(titulo, texto, botao, aoClicar) {
+  $("#painel").innerHTML = `<div class="empty"><h2>${esc(titulo)}</h2><p>${esc(texto)}</p>${botao ? `<button class="btn" type="button" id="btn-vazio">${esc(botao)}</button>` : ""}</div>`;
+  if (botao) $("#btn-vazio").addEventListener("click", aoClicar);
+}
+
+function painelErro(e) {
+  if (e.status === 401) return;
+  $("#painel").innerHTML = `<div class="empty"><h2>Não foi possível carregar</h2><p>${esc(e.message)}</p><button class="btn ghost" type="button" id="btn-tentar">Tentar de novo</button></div>`;
+  $("#btn-tentar").addEventListener("click", () => irPara(estado.view));
+}
+
+function paginaVaziaAlemDoFim(lista) {
+  if (!lista.length && estado.pagina[estado.view] > 0) {
+    estado.pagina[estado.view] -= 1;
+    irPara(estado.view);
+    return true;
+  }
+  return false;
+}
+
+const botaoAcao = (acao, id, texto, perigo = false) =>
+  `<button class="link${perigo ? " danger" : ""}" type="button" data-acao="${acao}" data-id="${id}">${texto}</button>`;
+
+/* ===== Formulário genérico ===== */
+function campoHTML(c, valores) {
+  const v = valores[c.nome] ?? "";
+  const id = `campo-${c.nome}`;
+  const obrigatorio = c.opcional ? "" : "required";
+  let controle;
+  if (c.tipo === "select") {
+    const opcoes = c.opcoes.map((o) => `<option value="${esc(o.valor)}" ${String(o.valor) === String(v) ? "selected" : ""}>${esc(o.rotulo)}</option>`).join("");
+    controle = `<select id="${id}" name="${c.nome}" ${obrigatorio}><option value="" disabled ${v === "" ? "selected" : ""}>Escolha…</option>${opcoes}</select>`;
+  } else if (c.tipo === "textarea") {
+    controle = `<textarea id="${id}" name="${c.nome}" ${c.maxlength ? `maxlength="${c.maxlength}"` : ""} ${obrigatorio}>${esc(v)}</textarea>`;
+  } else {
+    const attrs = [
+      `type="${c.tipo || "text"}"`,
+      c.maxlength ? `maxlength="${c.maxlength}"` : "",
+      c.min !== undefined ? `min="${c.min}"` : "",
+      c.max !== undefined ? `max="${c.max}"` : "",
+      c.step ? `step="${c.step}"` : "",
+      c.pattern ? `pattern="${c.pattern}"` : "",
+      c.inputmode ? `inputmode="${c.inputmode}"` : "",
+      c.placeholder ? `placeholder="${esc(c.placeholder)}"` : "",
+    ].join(" ");
+    controle = `<input id="${id}" name="${c.nome}" value="${esc(v)}" ${attrs} ${obrigatorio}>`;
+  }
+  return `<div class="field${c.inteiro_linha ? " full" : ""}"><label for="${id}">${esc(c.rotulo)}</label>${controle}${c.ajuda ? `<small>${esc(c.ajuda)}</small>` : ""}</div>`;
+}
+
+function abrirFormulario({ titulo, campos, valores = {}, botao, enviar }) {
+  const dlg = $("#dlg-form");
+  dlg.innerHTML = `
+    <form id="form-modal">
+      <div class="dlg-head"><h2>${esc(titulo)}</h2><button type="button" class="x" data-fechar aria-label="Fechar">×</button></div>
+      <div class="dlg-body"><div class="form-erro" hidden></div><div class="form-grid">${campos.map((c) => campoHTML(c, valores)).join("")}</div></div>
+      <div class="dlg-foot"><button type="button" class="btn ghost" data-fechar>Cancelar</button><button type="submit" class="btn">${esc(botao)}</button></div>
+    </form>`;
+  dlg.querySelectorAll("[data-fechar]").forEach((b) => b.addEventListener("click", () => dlg.close()));
+  const form = $("#form-modal", dlg);
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const erro = $(".form-erro", form);
+    const enviarBtn = $("button[type=submit]", form);
+    const dados = {};
+    for (const c of campos) {
+      let v = form.elements[c.nome].value;
+      if (typeof v === "string" && c.tipo !== "select") v = v.trim();
+      if (v === "") { if (c.opcional) continue; }
+      if (c.tipo === "number") v = Number(v);
+      if (c.inteiro) v = Number(v);
+      dados[c.nome] = v;
+    }
+    erro.hidden = true;
+    enviarBtn.disabled = true;
+    try {
+      await enviar(dados);
+      dlg.close();
+    } catch (err) {
+      if (err.status === 401) return;
+      erro.textContent = err.message;
+      erro.hidden = false;
+    } finally {
+      enviarBtn.disabled = false;
+    }
+  });
+  dlg.showModal();
+  const primeiro = form.querySelector("input, select, textarea");
+  if (primeiro) primeiro.focus();
+}
+
+function confirmar({ titulo, texto, botao }) {
+  return new Promise((resolver) => {
+    const dlg = $("#dlg-confirma");
+    dlg.innerHTML = `
+      <div class="dlg-head"><h2>${esc(titulo)}</h2><button type="button" class="x" data-r="nao" aria-label="Fechar">×</button></div>
+      <div class="dlg-body"><p>${esc(texto)}</p></div>
+      <div class="dlg-foot"><button type="button" class="btn ghost" data-r="nao">Cancelar</button><button type="button" class="btn danger" data-r="sim">${esc(botao)}</button></div>`;
+    let resposta = false;
+    dlg.querySelectorAll("[data-r]").forEach((b) => b.addEventListener("click", () => {
+      resposta = b.dataset.r === "sim";
+      dlg.close();
+    }));
+    dlg.addEventListener("close", () => resolver(resposta), { once: true });
+    dlg.showModal();
+    $("[data-r=nao].btn", dlg).focus();
+  });
+}
+
+/* ===== Tutores ===== */
+const CAMPOS_TUTOR = [
+  { nome: "nome", rotulo: "Nome completo", maxlength: 100, inteiro_linha: true },
+  { nome: "email", rotulo: "E-mail", tipo: "email", maxlength: 150 },
+  { nome: "telefone", rotulo: "Telefone", tipo: "tel", maxlength: 11, pattern: "\\d{10,11}", inputmode: "numeric", ajuda: "Só números, com DDD." },
+];
+
+async function verTutores() {
+  montarPagina({ titulo: "Tutores", descricao: "Os responsáveis por cada paciente.", botao: "Novo tutor", aoClicar: () => formTutor() });
+  let lista;
+  try {
+    lista = await api(`/tutores?skip=${estado.pagina.tutores * CONFIG.LIMITE}&limit=${CONFIG.LIMITE}`);
+  } catch (e) { return painelErro(e); }
+  if (paginaVaziaAlemDoFim(lista)) return;
+  if (!lista.length) {
+    return painelVazio("Nenhum tutor cadastrado", "Cadastre o primeiro tutor para depois registrar os animais dele.", "Cadastrar tutor", () => formTutor());
+  }
+  const porId = Object.fromEntries(lista.map((t) => [t.id, t]));
+  const linhas = lista.map((t) => `
+    <tr>
+      <td><strong>${esc(t.nome)}</strong></td>
+      <td>${esc(t.email)}</td>
+      <td>${esc(fone(t.telefone))}</td>
+      <td><div class="actions">${botaoAcao("animais", t.id, "Animais")}${botaoAcao("editar", t.id, "Editar")}${botaoAcao("excluir", t.id, "Excluir", true)}</div></td>
+    </tr>`).join("");
+  preencherPainel(tabela(["Nome", "E-mail", "Telefone", ""], linhas) + paginador(lista.length), {
+    animais: (id) => animaisDoTutor(porId[id]),
+    editar: (id) => formTutor(porId[id]),
+    excluir: (id) => excluirTutor(porId[id]),
+  });
+}
+
+function formTutor(tutor) {
+  abrirFormulario({
+    titulo: tutor ? "Editar tutor" : "Novo tutor",
+    campos: CAMPOS_TUTOR,
+    valores: tutor || {},
+    botao: tutor ? "Salvar alterações" : "Cadastrar tutor",
+    enviar: async (dados) => {
+      if (tutor) {
+        await api(`/tutores/${tutor.id}`, { metodo: "PATCH", json: dados });
+        toast("Tutor atualizado.");
+      } else {
+        await api("/tutores", { metodo: "POST", json: dados });
+        toast("Tutor cadastrado.");
+      }
+      irPara("tutores");
+    },
+  });
+}
+
+async function excluirTutor(tutor) {
+  const ok = await confirmar({
+    titulo: `Excluir ${tutor.nome}?`,
+    texto: "Os animais deste tutor e todo o histórico deles também serão excluídos. Não dá para desfazer.",
+    botao: "Excluir tutor",
+  });
+  if (!ok) return;
+  try {
+    await api(`/tutores/${tutor.id}`, { metodo: "DELETE" });
+    toast("Tutor excluído.");
+    irPara("tutores");
+  } catch (e) { falhou(e); }
+}
+
+async function animaisDoTutor(tutor) {
+  const dlg = $("#dlg-ficha");
+  dlg.innerHTML = `<div class="ficha"><div class="ficha-top">${PATA.replace("<svg", '<svg class="paws"')}<button type="button" class="x" data-fechar aria-label="Fechar">×</button><h2>${esc(tutor.nome)}</h2><p>${esc(tutor.email)}, ${esc(fone(tutor.telefone))}</p></div><p class="loading">Carregando…</p></div>`;
+  $("[data-fechar]", dlg).addEventListener("click", () => dlg.close());
+  dlg.showModal();
+  let animais;
+  try {
+    animais = await api(`/tutores/${tutor.id}/animais`);
+  } catch (e) { dlg.close(); return falhou(e); }
+  const corpo = animais.length
+    ? `<ul class="lista-animais">${animais.map((a) => `<li><div><strong>${esc(a.nome)}</strong><small>${esc(a.especie)}, ${esc(a.raca)}</small></div><button class="btn ghost small" type="button" data-ficha="${a.id}">Abrir ficha</button></li>`).join("")}</ul>`
+    : `<div class="empty"><h2>Nenhum animal</h2><p>Este tutor ainda não tem animais cadastrados.</p></div>`;
+  $(".loading", dlg).outerHTML = `<h3 class="secao-titulo">Animais</h3>${corpo}`;
+  const porId = Object.fromEntries(animais.map((a) => [a.id, a]));
+  dlg.querySelectorAll("[data-ficha]").forEach((b) => b.addEventListener("click", () => abrirFicha(porId[b.dataset.ficha], tutor)));
+}
+
+/* ===== Animais ===== */
+async function carregarTutores() {
+  // Busca até 100 tutores para preencher nomes e listas de seleção.
+  return api("/tutores?skip=0&limit=100");
+}
+async function carregarAnimais() {
+  return api("/animais?skip=0&limit=100");
+}
+
+async function verAnimais() {
+  montarPagina({ titulo: "Animais", descricao: "Os pacientes da clínica.", botao: "Novo animal", aoClicar: () => formAnimal() });
+  let lista, tutores;
+  try {
+    [lista, tutores] = await Promise.all([
+      api(`/animais?skip=${estado.pagina.animais * CONFIG.LIMITE}&limit=${CONFIG.LIMITE}`),
+      carregarTutores(),
+    ]);
+  } catch (e) { return painelErro(e); }
+  if (paginaVaziaAlemDoFim(lista)) return;
+  if (!lista.length) {
+    return tutores.length
+      ? painelVazio("Nenhum animal cadastrado", "Cadastre o primeiro paciente e vincule ao tutor dele.", "Cadastrar animal", () => formAnimal(null, tutores))
+      : painelVazio("Nenhum animal cadastrado", "Antes de cadastrar um animal, cadastre o tutor responsável por ele.", "Ir para tutores", () => irPara("tutores"));
+  }
+  const nomeTutor = Object.fromEntries(tutores.map((t) => [t.id, t]));
+  const porId = Object.fromEntries(lista.map((a) => [a.id, a]));
+  const linhas = lista.map((a) => `
+    <tr>
+      <td><strong>${esc(a.nome)}</strong><span class="sub">${esc(a.especie)}, ${esc(a.raca)}</span></td>
+      <td>${esc(sexo(a.sexo))}</td>
+      <td>${esc(a.idade)}</td>
+      <td class="num">${kg.format(a.peso)} kg</td>
+      <td>${esc(nomeTutor[a.id_tutor]?.nome ?? "—")}</td>
+      <td><div class="actions">${botaoAcao("ficha", a.id, "Ficha")}${botaoAcao("editar", a.id, "Editar")}${botaoAcao("excluir", a.id, "Excluir", true)}</div></td>
+    </tr>`).join("");
+  preencherPainel(tabela(["Paciente", "Sexo", "Idade", { t: "Peso" }, "Tutor", ""], linhas) + paginador(lista.length), {
+    ficha: (id) => abrirFicha(porId[id], nomeTutor[porId[id].id_tutor]),
+    editar: (id) => formAnimal(porId[id], tutores),
+    excluir: (id) => excluirAnimal(porId[id]),
+  });
+}
+
+async function formAnimal(animal, tutores) {
+  try {
+    if (!tutores) tutores = await carregarTutores();
+  } catch (e) { return falhou(e); }
+  if (!tutores.length) return toast("Cadastre um tutor antes de cadastrar um animal.", true);
+  abrirFormulario({
+    titulo: animal ? `Editar ${animal.nome}` : "Novo animal",
+    valores: animal || {},
+    botao: animal ? "Salvar alterações" : "Cadastrar animal",
+    campos: [
+      { nome: "id_tutor", rotulo: "Tutor", tipo: "select", inteiro: true, inteiro_linha: true, opcoes: tutores.map((t) => ({ valor: t.id, rotulo: t.nome })) },
+      { nome: "nome", rotulo: "Nome", maxlength: 100 },
+      { nome: "especie", rotulo: "Espécie", maxlength: 50, placeholder: "Cachorro, gato…" },
+      { nome: "raca", rotulo: "Raça", maxlength: 50 },
+      { nome: "sexo", rotulo: "Sexo", tipo: "select", opcoes: [{ valor: "M", rotulo: "Macho" }, { valor: "F", rotulo: "Fêmea" }] },
+      { nome: "idade", rotulo: "Idade", maxlength: 20, placeholder: "3 anos" },
+      { nome: "peso", rotulo: "Peso (kg)", tipo: "number", min: 0.01, max: 499.99, step: 0.01, inputmode: "decimal" },
+    ],
+    enviar: async (dados) => {
+      if (animal) {
+        await api(`/animais/${animal.id}`, { metodo: "PATCH", json: dados });
+        toast("Animal atualizado.");
+      } else {
+        await api("/animais", { metodo: "POST", json: dados });
+        toast("Animal cadastrado.");
+      }
+      if (estado.view === "animais") irPara("animais");
+    },
+  });
+}
+
+async function excluirAnimal(animal) {
+  const ok = await confirmar({
+    titulo: `Excluir ${animal.nome}?`,
+    texto: "Todo o histórico de procedimentos deste animal também será excluído. Não dá para desfazer.",
+    botao: "Excluir animal",
+  });
+  if (!ok) return;
+  try {
+    await api(`/animais/${animal.id}`, { metodo: "DELETE" });
+    toast("Animal excluído.");
+    irPara("animais");
+  } catch (e) { falhou(e); }
+}
+
+/* Ficha do animal: dados, carteira de vacinação e histórico */
+async function abrirFicha(animal, tutor) {
+  const dlg = $("#dlg-ficha");
+  const topo = `<div class="ficha-top">${PATA.replace("<svg", '<svg class="paws"')}<button type="button" class="x" data-fechar aria-label="Fechar">×</button><h2>${esc(animal.nome)}</h2><p>${esc(animal.especie)}, ${esc(animal.raca)}${tutor ? `. Tutor: ${esc(tutor.nome)}` : ""}</p></div>`;
+  dlg.innerHTML = `<div class="ficha">${topo}<p class="loading">Carregando ficha…</p></div>`;
+  $("[data-fechar]", dlg).addEventListener("click", () => dlg.close());
+  if (!dlg.open) dlg.showModal();
+
+  let historico, vacinas;
+  try {
+    [historico, vacinas] = await Promise.all([
+      api(`/animais/${animal.id}/procedimentos`),
+      api(`/animais/${animal.id}/vacinas`),
+    ]);
+  } catch (e) { dlg.close(); return falhou(e); }
+
+  const hoje = hojeISO();
+  const carteira = vacinas.length
+    ? `<ol>${vacinas.map((v) => {
+        const [, m, d] = String(v.data).split("-");
+        const agendada = v.data > hoje;
+        return `<li><span class="selo${agendada ? " agendada" : ""}"><b>${d}</b><small>${MESES[Number(m) - 1]}</small></span><div><strong>${esc(v.nome)}</strong><small>${agendada ? "Agendada para" : "Aplicada em"} ${dataBR(v.data)}</small></div></li>`;
+      }).join("")}</ol>`
+    : `<p class="vazio">Nenhuma vacina registrada ainda.</p>`;
+  const linhaTempo = historico.length
+    ? `<ol class="historico">${historico.map((p) => `
+        <li class="${p.data > hoje ? "futuro" : ""}">
+          <div class="quando">${dataBR(p.data)} ${badgeTipo(p.tipo)}</div>
+          <strong>${esc(p.nome)}</strong>
+          <p>${esc(p.descricao)} ${p.preco != null ? `(${brl.format(p.preco)})` : ""}</p>
+        </li>`).join("")}</ol>`
+    : `<p class="loading">Nenhum procedimento registrado.</p>`;
+
+  dlg.innerHTML = `<div class="ficha">${topo}
+    <div class="dados">
+      <div class="dado"><span>Sexo</span><strong>${esc(sexo(animal.sexo))}</strong></div>
+      <div class="dado"><span>Idade</span><strong>${esc(animal.idade)}</strong></div>
+      <div class="dado"><span>Peso</span><strong>${kg.format(animal.peso)} kg</strong></div>
+    </div>
+    <h3 class="secao-titulo">Carteira de vacinação</h3>
+    <div class="carteira">${carteira}</div>
+    <h3 class="secao-titulo">Histórico</h3>
+    ${linhaTempo}
+    <button class="btn" type="button" id="btn-agendar">${ICONES.mais}Agendar procedimento</button>
+  </div>`;
+  $("[data-fechar]", dlg).addEventListener("click", () => dlg.close());
+  $("#btn-agendar").addEventListener("click", () => {
+    dlg.close();
+    formProcedimento(null, null, animal.id);
+  });
+}
+
+/* ===== Procedimentos ===== */
+async function verProcedimentos() {
+  montarPagina({ titulo: "Procedimentos", descricao: "Consultas, vacinas, exames e cirurgias.", botao: "Agendar procedimento", aoClicar: () => formProcedimento() });
+  let lista, animais;
+  try {
+    [lista, animais] = await Promise.all([
+      api(`/procedimentos?skip=${estado.pagina.procedimentos * CONFIG.LIMITE}&limit=${CONFIG.LIMITE}`),
+      carregarAnimais(),
+    ]);
+  } catch (e) { return painelErro(e); }
+  if (paginaVaziaAlemDoFim(lista)) return;
+  if (!lista.length) {
+    return animais.length
+      ? painelVazio("Nenhum procedimento agendado", "Agende a primeira consulta, vacina ou exame.", "Agendar procedimento", () => formProcedimento(null, animais))
+      : painelVazio("Nenhum procedimento agendado", "Antes de agendar, cadastre o animal que vai ser atendido.", "Ir para animais", () => irPara("animais"));
+  }
+  const animalPorId = Object.fromEntries(animais.map((a) => [a.id, a]));
+  const porId = Object.fromEntries(lista.map((p) => [p.id, p]));
+  const linhas = lista.map((p) => `
+    <tr>
+      <td>${dataBR(p.data)}</td>
+      <td><strong>${esc(p.nome)}</strong><span class="sub">${esc(resumo(p.descricao))}</span></td>
+      <td>${badgeTipo(p.tipo)}</td>
+      <td>${esc(animalPorId[p.id_animal]?.nome ?? "—")}</td>
+      <td class="num">${p.preco != null ? brl.format(p.preco) : "—"}</td>
+      <td><div class="actions">${botaoAcao("editar", p.id, "Editar")}${botaoAcao("excluir", p.id, "Excluir", true)}</div></td>
+    </tr>`).join("");
+  preencherPainel(tabela(["Data", "Procedimento", "Tipo", "Paciente", { t: "Preço" }, ""], linhas) + paginador(lista.length), {
+    editar: (id) => formProcedimento(porId[id], animais),
+    excluir: (id) => excluirProcedimento(porId[id]),
+  });
+}
+
+async function formProcedimento(proc, animais, idAnimal) {
+  try {
+    if (!animais) animais = await carregarAnimais();
+  } catch (e) { return falhou(e); }
+  if (!animais.length) return toast("Cadastre um animal antes de agendar um procedimento.", true);
+  const valores = proc ? { ...proc } : { id_animal: idAnimal ?? "", data: hojeISO() };
+  abrirFormulario({
+    titulo: proc ? "Editar procedimento" : "Agendar procedimento",
+    valores,
+    botao: proc ? "Salvar alterações" : "Agendar",
+    campos: [
+      { nome: "id_animal", rotulo: "Paciente", tipo: "select", inteiro: true, inteiro_linha: true, opcoes: animais.map((a) => ({ valor: a.id, rotulo: `${a.nome} (${a.especie})` })) },
+      { nome: "tipo", rotulo: "Tipo", tipo: "select", opcoes: TIPOS.map((t) => ({ valor: t, rotulo: t })) },
+      { nome: "data", rotulo: "Data", tipo: "date", min: proc ? undefined : hojeISO() },
+      { nome: "nome", rotulo: "Nome do procedimento", maxlength: 100, inteiro_linha: true, placeholder: "V10, hemograma, consulta de rotina…" },
+      { nome: "preco", rotulo: "Preço (R$)", tipo: "number", min: 0, step: 0.01, inputmode: "decimal" },
+      { nome: "descricao", rotulo: "Descrição", tipo: "textarea", maxlength: 500, inteiro_linha: true },
+    ],
+    enviar: async (dados) => {
+      if (proc) {
+        await api(`/procedimentos/${proc.id}`, { metodo: "PATCH", json: dados });
+        toast("Procedimento atualizado.");
+      } else {
+        await api("/procedimentos", { metodo: "POST", json: dados });
+        toast("Procedimento agendado.");
+      }
+      if (estado.view === "procedimentos") irPara("procedimentos");
+    },
+  });
+}
+
+async function excluirProcedimento(proc) {
+  const ok = await confirmar({
+    titulo: `Excluir ${proc.nome}?`,
+    texto: `O procedimento de ${dataBR(proc.data)} vai sair do histórico do animal. Não dá para desfazer.`,
+    botao: "Excluir procedimento",
+  });
+  if (!ok) return;
+  try {
+    await api(`/procedimentos/${proc.id}`, { metodo: "DELETE" });
+    toast("Procedimento excluído.");
+    irPara("procedimentos");
+  } catch (e) { falhou(e); }
+}
+
+/* ===== Usuários (somente admin) ===== */
+async function verUsuarios() {
+  montarPagina({ titulo: "Usuários", descricao: "Quem tem acesso ao painel e com qual perfil." });
+  let lista;
+  try {
+    lista = await api(`${CONFIG.ADMIN.listar}?skip=${estado.pagina.usuarios * CONFIG.LIMITE}&limit=${CONFIG.LIMITE}`);
+  } catch (e) { return painelErro(e); }
+  if (paginaVaziaAlemDoFim(lista)) return;
+  if (!lista.length) return painelVazio("Nenhum usuário", "Quando alguém criar uma conta, ela aparece aqui.");
+
+  const porId = Object.fromEntries(lista.map((u) => [u.id, u]));
+  const linhas = lista.map((u) => {
+    const eu = u.email === estado.email;
+    const perfil = u.perfil ? `<span class="badge p-${esc(u.perfil)}">${esc(u.perfil)}</span>` : "—";
+    let acoes = "";
+    if (!eu) {
+      if (u.perfil !== "funcionario" && u.perfil !== "admin") acoes += botaoAcao("promover", u.id, "Liberar acesso");
+      if (CONFIG.ADMIN.rebaixar && u.perfil !== "comum") acoes += botaoAcao("rebaixar", u.id, "Remover acesso");
+      acoes += botaoAcao("excluir", u.id, "Excluir", true);
+    }
+    return `<tr>
+      <td><strong>${esc(u.nome)}</strong>${eu ? '<span class="sub">Você</span>' : ""}</td>
+      <td>${esc(u.email)}</td>
+      <td>${perfil}</td>
+      <td><div class="actions">${acoes}</div></td>
+    </tr>`;
+  }).join("");
+  preencherPainel(tabela(["Nome", "E-mail", "Perfil", ""], linhas) + paginador(lista.length), {
+    promover: (id) => alterarAcesso(porId[id], "promover"),
+    rebaixar: (id) => alterarAcesso(porId[id], "rebaixar"),
+    excluir: (id) => excluirUsuario(porId[id]),
+  });
+}
+
+async function alterarAcesso(usuario, acao) {
+  try {
+    await api(CONFIG.ADMIN[acao](usuario.id), { metodo: "PATCH" });
+    toast(acao === "promover" ? `${usuario.nome} agora tem acesso de funcionário.` : `${usuario.nome} não tem mais acesso aos dados.`);
+    irPara("usuarios");
+  } catch (e) { falhou(e); }
+}
+
+async function excluirUsuario(usuario) {
+  const ok = await confirmar({
+    titulo: `Excluir a conta de ${usuario.nome}?`,
+    texto: "A pessoa perde o acesso ao painel na hora. Não dá para desfazer.",
+    botao: "Excluir conta",
+  });
+  if (!ok) return;
+  try {
+    await api(CONFIG.ADMIN.excluir(usuario.id), { metodo: "DELETE" });
+    toast("Conta excluída.");
+    irPara("usuarios");
+  } catch (e) { falhou(e); }
+}
+
+/* ===== Eventos de início ===== */
+$("#aba-entrar").addEventListener("click", () => trocarAba("entrar"));
+$("#aba-criar").addEventListener("click", () => trocarAba("criar"));
+
+$("#form-entrar").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const erro = $(".form-erro", form);
+  const botao = $("button[type=submit]", form);
+  erro.hidden = true;
+  botao.disabled = true;
+  try {
+    await entrar(form.email.value.trim(), form.senha.value);
+    form.reset();
+  } catch (err) {
+    erro.textContent = err.message;
+    erro.hidden = false;
+  } finally {
+    botao.disabled = false;
+  }
+});
+
+$("#form-criar").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const erro = $(".form-erro", form);
+  const botao = $("button[type=submit]", form);
+  const dados = { nome: form.nome.value.trim(), email: form.email.value.trim(), senha: form.senha.value };
+  erro.hidden = true;
+  botao.disabled = true;
+  try {
+    await api("/auth/registro", { metodo: "POST", json: dados, login: true });
+    toast("Conta criada.");
+    await entrar(dados.email, dados.senha);
+    form.reset();
+    trocarAba("entrar");
+  } catch (err) {
+    erro.textContent = err.message;
+    erro.hidden = false;
+  } finally {
+    botao.disabled = false;
+  }
+});
+
+$("#btn-sair").addEventListener("click", () => sair());
+$("#btn-sair-aguardando").addEventListener("click", () => sair());
+$("#btn-verificar").addEventListener("click", () => iniciar());
+
+(function comecar() {
+  const token = lerGuardado("vetsys_token");
+  if (token) {
+    estado.token = token;
+    estado.email = emailDoToken(token);
+    iniciar();
+  } else {
+    mostrarTela("tela-login");
+  }
+})();
+</script>
+</body>
+</html>

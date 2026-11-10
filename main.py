@@ -219,9 +219,9 @@ def definir_funcionario(id_usuario: int, session: SessionDep, usuario: AdminAtua
     session.add(alvo)
     session.commit()
     session.refresh(alvo)
-    return alvo
+    return {"mensagem": "Usuário definido como funcionário."}
 
-@app.patch("/admin/comum/{id_usuario}", response_model=UsuarioAdminOut)
+@app.patch("/admin/usuarios/{id_usuario}", response_model=UsuarioAdminOut)
 def definir_comum(id_usuario: int, session: SessionDep, usuario: AdminAtual):
     alvo = session.get(Usuario, id_usuario)
     if alvo is None:
@@ -232,7 +232,18 @@ def definir_comum(id_usuario: int, session: SessionDep, usuario: AdminAtual):
     session.add(alvo)
     session.commit()
     session.refresh(alvo)
-    return alvo
+    return {"mensagem": "Usuário definido como comum."}
+
+@app.delete("/admin/usuarios/{id_usuario}")
+def excluir_usuario(id_usuario: int, session: SessionDep, usuario: AdminAtual):
+    alvo = session.get(Usuario, id_usuario)
+    if alvo is None:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+    if alvo.id == usuario.id:
+        raise HTTPException(status_code=400, detail="Você não pode excluir a si mesmo.")
+    session.delete(alvo)
+    session.commit()
+    return {"mensagem": "Usuário excluido com sucesso."}
 
 #----------PROCEDIMENTOS----------
 

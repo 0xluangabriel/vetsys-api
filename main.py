@@ -1,12 +1,47 @@
+from sqlmodel import SQLModel, Field, create_engine, Session, select, Relationship
+from datetime import date, datetime, timedelta, timezone
+from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel, field_validator
-from sqlmodel import SQLModel, Field, create_engine, Session, select, Relationship
 from sqlalchemy.exc import IntegrityError
+from pwdlib import PasswordHash
+from dotenv import load_dotenv
 from typing import Annotated
 from enum import Enum
-from datetime import date
 import os
-from dotenv import load_dotenv
+import jwt
+
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITMO = "HS256"
+MINUTOS_EXPIRACAO = 30
+
+def criar_token(email: str) -> str:
+    expira = datetime.now(timezone.utc) + timedelta(minutes=MINUTOS_EXPIRACAO)
+    payload = {"sub": email, "exp": expira}
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITMO)
+
+class UsuarioCreate(SQLModel):
+    nome: str = Field(min_length=1, max_length=100)
+    email: str = Field(max_length=150)
+    senha: str = Field(max_length=128)
+
+    @field_validator("senha")
+    @classmethod
+    def senha_forte(cls, valor):
+        if len(valor) < 8:
+            raise ValueError("A senha precisa ter no mínimo 8 caracteres.")
+        return valor
+    
+class UsuarioOut(SQLModel):
+    nome: str
+    email: str
+
+class Usuario(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    nome: str = Field(max_length=100)
+    email: str = Field(max_length=150, unique=True)
+    senha_hash: str = Field(max_length=255)
 
 class TutorCreate(SQLModel):
     nome: str = Field(min_length=1, max_length=100)
@@ -21,7 +56,6 @@ class TutorEdit(SQLModel):
     nome: str | None = Field(default=None, min_length=1, max_length=100)
     email: str | None = Field(default=None, max_length=150, unique=True)
     telefone: str | None = Field(default=None, regex=r"^\d+$", max_length=11)
-
 
 class AnimalCreate(SQLModel):
     id_tutor: int = Field(foreign_key="tutor.id", ondelete="CASCADE")
@@ -84,6 +118,7 @@ class Procedimento(ProcedimentoCreate, table=True):
 load_dotenv()
 engine = create_engine(os.getenv("DATABASE_URL"))
 SQLModel.metadata.create_all(engine)
+password_hash = PasswordHash.recommended()
 
 def get_session():
     with Session(engine) as session:
@@ -92,7 +127,25 @@ def get_session():
 app = FastAPI(title="Vetsys API", description="API para gerenciamento de tutores e pets", version="1.7.0")
 SessionDep = Annotated[Session, Depends(get_session)]
 
+#----------USUARIOS----------
+@app.post("/auth/registro", status_code=201, response_model=UsuarioOut)
+def registrar(dados: UsuarioCreate, session: SessionDep):
+    usuario = Usuario(nome=dados.nome, email=dados.email, senha_hash=password_hash.hash(dados.senha))
+    session.add(usuario)
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="E-mail já cadastrado")
+    session.refresh(usuario)
+    return usuario
 
+@app.post("/auth/login")
+def login(form: Annotated[OAuth2PasswordRequestForm, Depends()], session: SessionDep):
+    usuario = session.exec(select(Usuario).where(Usuario.email == form.username)).first()
+    if usuario is None or not password_hash.verify(form.password, usuario.senha_hash):
+        raise HTTPException(status_code=401, detail="E-mail ou senha incorretos.")
+    return {"access_token": criar_token(usuario.email), "token_type": "bearer"}
 
 #----------PROCEDIMENTOS----------
 @app.get("/procedimentos")
@@ -102,7 +155,7 @@ def listar_procedimentos(session: SessionDep, skip: int = 0, limit: int = 10):
 @app.post("/procedimentos", status_code=201)
 def criar_procedimento(dados: ProcedimentoCreate, session: SessionDep):
     if session.get(Animal, dados.id_animal) is None:
-        raise HTTPException(status_code=404, detail="Animal não encontrado")
+        raise HTTPException(status_code=404, detail="Animal não encontrado.")
     
     procedimento = Procedimento(**dados.model_dump())
     session.add(procedimento)
@@ -299,8 +352,7 @@ def buscar_animais_tutor(id_tutor: int, session: SessionDep):
     tutor = session.get(Tutor, id_tutor)
     if tutor is None:
         raise HTTPException(status_code=404, detail="Tutor inválido ou não encontrado")
-    animais = session.exec(select(Animal).where(Animal.id_tutor == tutor.id)).all()
-    return animais
+    return tutor.animais
 
 @app.patch("/tutores/{id_tutor}")
 def att_parte_tutor(id_tutor: int, dados: TutorEdit, session: SessionDep):

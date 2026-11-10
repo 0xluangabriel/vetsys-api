@@ -5,6 +5,8 @@ requires-python = ">=3.13"
 dependencies = [
     "cryptography>=50.0.2",
     "fastapi[standard]>=0.162.0",
+    "pwdlib[argon2]>=0.3.1",
+    "pyjwt>=2.15.1",
     "pymysql>=1.2.4",
     "python-dotenv>=1.2.4",
     "sqlmodel>=0.0.48",

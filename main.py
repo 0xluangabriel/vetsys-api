@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel, field_validator
-from sqlmodel import SQLModel, Field, create_engine, Session, select
+from sqlmodel import SQLModel, Field, create_engine, Session, select, Relationship
 from sqlalchemy.exc import IntegrityError
 from typing import Annotated
 from enum import Enum
@@ -15,6 +15,7 @@ class TutorCreate(SQLModel):
 
 class Tutor(TutorCreate, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    animais: list["Animal"] = Relationship(back_populates="tutor", cascade_delete=True)
 
 class TutorEdit(SQLModel):
     nome: str | None = Field(default=None, min_length=1, max_length=100)
@@ -23,7 +24,7 @@ class TutorEdit(SQLModel):
 
 
 class AnimalCreate(SQLModel):
-    id_tutor: int = Field(foreign_key="tutor.id")
+    id_tutor: int = Field(foreign_key="tutor.id", ondelete="CASCADE")
     nome: str = Field(min_length=1, max_length=100)
     especie: str = Field(min_length=1, max_length=50)
     raca: str = Field(min_length=1, max_length=50)
@@ -33,6 +34,8 @@ class AnimalCreate(SQLModel):
 
 class Animal(AnimalCreate, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    tutor: Tutor | None = Relationship(back_populates="animais")
+    procedimentos: list["Procedimento"] = Relationship(back_populates="animal", cascade_delete=True)
 
 class AnimalEdit(SQLModel):
     id_tutor: int | None = None
@@ -51,7 +54,7 @@ class TipoProcedimento(str, Enum):
     cirurgia = "Cirurgia"
 
 class ProcedimentoCreate(SQLModel):
-    id_animal: int = Field(foreign_key="animal.id")
+    id_animal: int = Field(foreign_key="animal.id", ondelete="CASCADE")
     nome: str = Field(min_length=1, max_length=100)
     descricao: str = Field(min_length=1, max_length=500)
     preco: float
@@ -75,7 +78,7 @@ class ProcedimentoEdit(SQLModel):
 
 class Procedimento(ProcedimentoCreate, table=True):
     id: int | None = Field(default=None, primary_key=True)
-
+    animal: Animal | None = Relationship(back_populates="procedimentos")
 
 
 load_dotenv()
@@ -199,7 +202,6 @@ def apagar_animal(id_animal: int, session: SessionDep):
     procedimentos = session.exec(select(Procedimento).where(Procedimento.id_animal == animal.id)).all()
     for procedimento in procedimentos:
         session.delete(procedimento)
-    session.flush()
     session.delete(animal)
     session.commit()
     return {"mensagem": "Animal apagado com sucesso."}
@@ -287,9 +289,7 @@ def apagar_tutor(id_tutor: int, session: SessionDep):
         procedimentos = session.exec(select(Procedimento).where(Procedimento.id_animal == animal.id)).all()
         for procedimento in procedimentos:
             session.delete(procedimento)
-            session.flush()
         session.delete(animal)
-        session.flush()
     session.delete(tutor)
     session.commit()
     return {"mensagem": "Tutor, seus animais e procedimentos foram excluídos com sucesso."}

@@ -92,12 +92,14 @@ def criar_procedimento(dados: ProcedimentoCreate, session: SessionDep):
     return procedimento
 
 @app.put("/procedimentos/{id_procedimento}")
-def atualizar_procedimento(id_procedimento: int, dados: ProcedimentoEdit, session: SessionDep):
+def atualizar_procedimento(id_procedimento: int, dados: ProcedimentoCreate, session: SessionDep):
     procedimento = session.get(Procedimento, id_procedimento)
     if procedimento is None:
         raise HTTPException(status_code=404, detail="Procedimento não encontrado")
+    if session.get(Animal, dados.id_animal) is None:
+        raise HTTPException(status_code=404, detail="Animal não encontrado")
     
-    for key, value in dados.model_dump(exclude_unset=True).items():
+    for key, value in dados.model_dump().items():
         setattr(procedimento, key, value)
     
     session.commit()
@@ -109,7 +111,7 @@ def att_parte_procedimento(id_procedimento: int, dados: ProcedimentoEdit, sessio
     procedimento = session.get(Procedimento, id_procedimento)
     if procedimento is None:
         raise HTTPException(status_code=404, detail="Procedimento não encontrado")
-    if (Animal, dados.id_animal) is not None:
+    if dados.id_animal is not None:
         if session.get(Animal, dados.id_animal) is None:
             raise HTTPException(status_code=404, detail="Esse ID de animal está inválido ou não existe.")
     for key, value in dados.model_dump(exclude_unset=True).items():
@@ -130,7 +132,7 @@ def buscar_procedimento(id_procedimento: int, session: SessionDep):
 def apagar_procedimento(id_procedimento: int, session: SessionDep):
     procedimento = session.get(Procedimento, id_procedimento)
     if procedimento is None:
-        raise HTTPException(status_code=400, detail="Procedimento não encontrado.")
+        raise HTTPException(status_code=404, detail="Procedimento não encontrado.")
     session.delete(procedimento)
     session.commit()
     return {"mensagem": "Procedimento apagado com sucesso."}
@@ -177,7 +179,11 @@ def buscar_animal(id_animal: int, session: SessionDep):
 def apagar_animal(id_animal: int, session: SessionDep):
     animal = session.get(Animal, id_animal)
     if animal is None:
-        raise HTTPException(status_code=400, detail="Animal não encontrado.")
+        raise HTTPException(status_code=404, detail="Animal não encontrado.")
+    procedimentos = session.exec(select(Procedimento).where(Procedimento.id_animal == animal.id)).all()
+    for procedimento in procedimentos:
+        session.delete(procedimento)
+    session.flush()
     session.delete(animal)
     session.commit()
     return {"mensagem": "Animal apagado com sucesso."}
@@ -243,8 +249,9 @@ def apagar_tutor(id_tutor: int, session: SessionDep):
         procedimentos = session.exec(select(Procedimento).where(Procedimento.id_animal == animal.id)).all()
         for procedimento in procedimentos:
             session.delete(procedimento)
+            session.flush()
         session.delete(animal)
-    
+        session.flush()
     session.delete(tutor)
     session.commit()
     return {"mensagem": "Tutor, seus animais e procedimentos foram excluídos com sucesso."}

@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel, field_validator
 from sqlmodel import SQLModel, Field, create_engine, Session, select
+from sqlalchemy.exc import IntegrityError
 from typing import Annotated
 from enum import Enum
 from datetime import date
@@ -9,11 +10,17 @@ from dotenv import load_dotenv
 
 class TutorCreate(SQLModel):
     nome: str = Field(min_length=1, max_length=100)
-    email: str = Field(max_length=150)
+    email: str = Field(max_length=150, unique=True)
     telefone: str = Field(regex=r"^\d+$", max_length=11)
 
 class Tutor(TutorCreate, table=True):
     id: int | None = Field(default=None, primary_key=True)
+
+class TutorEdit(SQLModel):
+    nome: str | None = Field(default=None, min_length=1, max_length=100)
+    email: str | None = Field(default=None, max_length=150, unique=True)
+    telefone: str | None = Field(default=None, regex=r"^\d+$", max_length=11)
+
 
 class AnimalCreate(SQLModel):
     id_tutor: int = Field(foreign_key="tutor.id")
@@ -26,6 +33,15 @@ class AnimalCreate(SQLModel):
 
 class Animal(AnimalCreate, table=True):
     id: int | None = Field(default=None, primary_key=True)
+
+class AnimalEdit(SQLModel):
+    id_tutor: int | None = None
+    nome: str | None = Field(default=None, min_length=1, max_length=100)
+    especie: str | None = Field(default=None, min_length=1, max_length=50)
+    raca: str | None = Field(default=None, min_length=1, max_length=50)
+    sexo: str | None = Field(default=None, min_length=1, max_length=1)
+    idade: str | None = Field(default=None, max_length=20)
+    peso: float | None = Field(default=None, gt=0, lt=500)
 
 class TipoProcedimento(str, Enum):
     vacinacao = "Vacinação"
@@ -70,7 +86,7 @@ def get_session():
     with Session(engine) as session:
         yield session
 
-app = FastAPI(title="Vetsys API", description="API para gerenciamento de tutores e pets", version="1.0.0")
+app = FastAPI(title="Vetsys API", description="API para gerenciamento de tutores e pets", version="1.7.0")
 SessionDep = Annotated[Session, Depends(get_session)]
 
 
@@ -204,14 +220,32 @@ def buscar_vacinas_animal(id_animal: int, session: SessionDep):
     vacinas = session.exec(select(Procedimento).where(Procedimento.id_animal == animal.id, Procedimento.tipo == TipoProcedimento.vacinacao).order_by(Procedimento.data)).all()
     return vacinas
 
+@app.patch("/animais/{id_animal}")
+def att_parte_animal(id_animal: int, dados: AnimalEdit, session: SessionDep):
+    animal = session.get(Animal, id_animal)
+    if animal is None:
+        raise HTTPException(status_code=404, detail="Animal não encontrado")
+    if dados.id_tutor is not None:
+        if session.get(Tutor, dados.id_tutor) is None:
+            raise HTTPException(status_code=404, detail="Esse ID de tutor está inválido ou não existe.")    
+    for key, value in dados.model_dump(exclude_unset=True).items():
+        setattr(animal, key, value)
+    session.commit()
+    session.refresh(animal)
+    return animal
+
 #----------TUTORES----------
 @app.post("/tutores", status_code=201)
 def criar_tutor(dados: TutorCreate, session: SessionDep):
     tutor = Tutor(**dados.model_dump())
     if dados.email and session.exec(select(Tutor).where(Tutor.email == dados.email)).first():
-        raise HTTPException(status_code=400, detail="Email já cadastrado")
+        raise HTTPException(status_code=409, detail="Email já cadastrado")
     session.add(tutor)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="E-mail já cadastrado")
     session.refresh(tutor)
     return tutor
 
@@ -224,7 +258,11 @@ def atualizar_tutor(id_tutor: int, dados: TutorCreate, session: SessionDep):
     for key, value in dados.model_dump().items():
         setattr(tutor, key, value)
     
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="E-mail já cadastrado")
     session.refresh(tutor)
     return tutor
 
@@ -263,3 +301,18 @@ def buscar_animais_tutor(id_tutor: int, session: SessionDep):
         raise HTTPException(status_code=404, detail="Tutor inválido ou não encontrado")
     animais = session.exec(select(Animal).where(Animal.id_tutor == tutor.id)).all()
     return animais
+
+@app.patch("/tutores/{id_tutor}")
+def att_parte_tutor(id_tutor: int, dados: TutorEdit, session: SessionDep):
+    tutor = session.get(Tutor, id_tutor)
+    if tutor is None:
+        raise HTTPException(status_code=404, detail="Tutor não encontrado")
+    for key, value in dados.model_dump(exclude_unset=True).items():
+        setattr(tutor, key, value)
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="E-mail já cadastrado")
+    session.refresh(tutor)
+    return tutor

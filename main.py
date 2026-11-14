@@ -1,7 +1,7 @@
 from sqlmodel import SQLModel, Field, create_engine, Session, select, Relationship
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from datetime import date, datetime, timedelta, timezone
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, field_validator, ValidationInfo
 from sqlalchemy.exc import IntegrityError
@@ -228,11 +228,11 @@ def login(form: Annotated[OAuth2PasswordRequestForm, Depends()], session: Sessio
 #----------ADMIN----------
 
 @app.get("/admin/funcionarios", response_model=list[UsuarioAdminOut])
-def listar_funcionarios(session: SessionDep, usuario: AdminAtual, skip: int = 0, limit: int = 10):
+def listar_funcionarios(session: SessionDep, usuario: AdminAtual, skip: int = Query(default=0, ge=0), limit: int = Query(default=10, ge=1, le=100)):
     return session.exec(select(Usuario).order_by(Usuario.id).where(Usuario.perfil == PerfilUsuario.funcionario).offset(skip).limit(limit)).all()
 
 @app.get("/admin/usuarios", response_model=list[UsuarioAdminOut])
-def listar_usuarios(session: SessionDep, usuario: AdminAtual, skip: int = 0, limit: int = 10):
+def listar_usuarios(session: SessionDep, usuario: AdminAtual, skip: int = Query(default=0, ge=0), limit: int = Query(default=10, ge=1, le=100)):
     return session.exec(select(Usuario).order_by(Usuario.id).offset(skip).limit(limit)).all()
 
 @app.patch("/admin/funcionarios/{id_usuario}", response_model=UsuarioAdminOut)
@@ -275,7 +275,7 @@ def excluir_usuario(id_usuario: int, session: SessionDep, usuario: AdminAtual):
 #----------PROCEDIMENTOS----------
 
 @app.get("/procedimentos")
-def listar_procedimentos(session: SessionDep, usuario: FuncionarioAtual, skip: int = 0, limit: int = 10):
+def listar_procedimentos(session: SessionDep, usuario: FuncionarioAtual, skip: int = Query(default=0, ge=0), limit: int = Query(default=10, ge=1, le=100)):
     return session.exec(select(Procedimento).order_by(Procedimento.id).offset(skip).limit(limit)).all()
 
 @app.post("/procedimentos", status_code=201)
@@ -337,7 +337,7 @@ def apagar_procedimento(id_procedimento: int, session: SessionDep, usuario: Func
 
 #----------ANIMAIS----------
 @app.get("/animais")
-def listar_animais(session: SessionDep, usuario: FuncionarioAtual, skip: int = 0, limit: int = 10):
+def listar_animais(session: SessionDep, usuario: FuncionarioAtual, skip: int = Query(default=0, ge=0), limit: int = Query(default=10, ge=1, le=100)):
     return session.exec(select(Animal).order_by(Animal.id).offset(skip).limit(limit)).all()
 
 @app.post("/animais", status_code=201)
@@ -445,7 +445,7 @@ def atualizar_tutor(id_tutor: int, dados: TutorCreate, session: SessionDep, usua
     return tutor
 
 @app.get("/tutores")
-def listar_tutores(session: SessionDep, usuario: FuncionarioAtual, skip: int = 0, limit: int = 10):
+def listar_tutores(session: SessionDep, usuario: FuncionarioAtual, skip: int = Query(default=0, ge=0), limit: int = Query(default=10, ge=1, le=100)):
     return session.exec(select(Tutor).order_by(Tutor.id).offset(skip).limit(limit)).all()
 
 @app.get("/tutores/{id_tutor}")

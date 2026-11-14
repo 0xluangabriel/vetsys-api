@@ -1,9 +1,13 @@
 from sqlmodel import SQLModel, Field, create_engine, Session, select, Relationship
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from pydantic import BaseModel, field_validator, ValidationInfo, EmailStr
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from datetime import date, datetime, timedelta, timezone
-from fastapi import FastAPI, HTTPException, Depends, Query
+from fastapi import FastAPI, HTTPException, Depends, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, field_validator, ValidationInfo
+from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 from pwdlib import PasswordHash
 from dotenv import load_dotenv
@@ -30,7 +34,7 @@ MINUTOS_EXPIRACAO = 30
 
 class UsuarioCreate(SQLModel):
     nome: str = Field(min_length=1, max_length=100)
-    email: str = Field(max_length=150)
+    email: EmailStr = Field(max_length=150)
     senha: str = Field(max_length=128)
 
     @field_validator("senha")
@@ -55,7 +59,7 @@ class PerfilEdit(SQLModel):
 class Usuario(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     nome: str = Field(max_length=100)
-    email: str = Field(max_length=150, unique=True)
+    email: EmailStr = Field(max_length=150, unique=True)
     senha_hash: str = Field(max_length=255)
     perfil: PerfilUsuario = Field(default=PerfilUsuario.comum)
 
@@ -67,12 +71,12 @@ class UsuarioAdminOut(SQLModel):
 
 class TutorCreate(SQLModel):
     nome: str = Field(min_length=1, max_length=100)
-    email: str = Field(max_length=150, unique=True)
+    email: EmailStr = Field(max_length=150, unique=True)
     telefone: str = Field(regex=r"^\d+$", max_length=11)
     endereco: str = Field(regex=r"^[\w\s.,ºª'/-]+$", min_length=1, max_length=200)
     numero: str = Field(regex=r"^(\d+[A-Za-z]?|S/N)$", min_length=1, max_length=10)
     cep: str = Field(regex=r"^\d{8}$", max_length=8)
-    complemento: str = Field(max_length=15)
+    complemento: str | None = Field(max_length=15)
 
 class Tutor(TutorCreate, table=True):
     id: int | None = Field(default=None, primary_key=True)
@@ -80,7 +84,7 @@ class Tutor(TutorCreate, table=True):
 
 class TutorEdit(SQLModel):
     nome: str | None = Field(default=None, min_length=1, max_length=100)
-    email: str | None = Field(default=None, max_length=150, unique=True)
+    email: EmailStr | None = Field(default=None, max_length=150, unique=True)
     telefone: str | None = Field(default=None, regex=r"^\d+$", max_length=11)
     endereco: str | None = Field(default=None, regex=r"^[\w\s.,ºª'/-]+$", min_length=1, max_length=200)
     numero: str | None = Field(regex=r"^(\d+[A-Za-z]?|S/N)$", default=None, min_length=1, max_length=10)
@@ -163,6 +167,8 @@ class Procedimento(ProcedimentoCreate, table=True):
 engine = create_engine(os.getenv("DATABASE_URL"))
 SQLModel.metadata.create_all(engine)
 password_hash = PasswordHash.recommended()
+hash_falso = password_hash.hash("abc123")
+limiter = Limiter(key_func=get_remote_address)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 def criar_token(email: str) -> str:
@@ -174,8 +180,15 @@ def get_session():
     with Session(engine) as session:
         yield session
 
+def rate_limit(request, exc):
+        return JSONResponse(status_code=429, content="Too many requests.")
+
+
 app = FastAPI(title="Vetsys API", description="API para gerenciamento de tutores e pets", version="2.1.0")
 SessionDep = Annotated[Session, Depends(get_session)]
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit)
 
 app.add_middleware(
     CORSMiddleware,
@@ -231,12 +244,16 @@ def registrar(dados: UsuarioCreate, session: SessionDep):
     return usuario
 
 @app.post("/auth/login")
-def login(form: Annotated[OAuth2PasswordRequestForm, Depends()], session: SessionDep):
+@limiter.limit("5/minute")
+def login(form: Annotated[OAuth2PasswordRequestForm, Depends()], session: SessionDep, request: Request):
     usuario = session.exec(select(Usuario).where(Usuario.email == form.username)).first()
-    if usuario is None or not password_hash.verify(form.password, usuario.senha_hash):
+    if usuario is None:
+        password_hash.verify(form.password, hash_falso)
+        raise HTTPException(status_code=401, detail="E-mail ou senha incorretos.")
+    if not password_hash.verify(form.password, usuario.senha_hash):
         raise HTTPException(status_code=401, detail="E-mail ou senha incorretos.")
     return {"access_token": criar_token(usuario.email), "token_type": "bearer"}
-
+    
 #----------ADMIN----------
 
 @app.get("/admin/funcionarios", response_model=list[UsuarioAdminOut])

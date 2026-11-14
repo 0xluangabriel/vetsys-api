@@ -13,8 +13,16 @@ import os
 import jwt
 
 load_dotenv()
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError('Sua DATABASE_URL não está no .env.')
 
 SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError('Sua SECRET KEY não está no .env, gere uma com python -c "import secrets; print(secrets.token_hex(32))"".')
+elif len(SECRET_KEY ) < 32:
+    raise RuntimeError('Sua SECRET KEY tem menos de 32 caracteres, gere uma com python -c "import secrets; print(secrets.token_hex(32))".')
+
 ALGORITMO = "HS256"
 MINUTOS_EXPIRACAO = 30
 
@@ -61,8 +69,10 @@ class TutorCreate(SQLModel):
     nome: str = Field(min_length=1, max_length=100)
     email: str = Field(max_length=150, unique=True)
     telefone: str = Field(regex=r"^\d+$", max_length=11)
-    endereco: str = Field(min_length=1, max_length=200)
+    endereco: str = Field(regex=r"^[\w\s.,ºª'/-]+$", min_length=1, max_length=200)
+    numero: str = Field(regex=r"^(\d+[A-Za-z]?|S/N)$", min_length=1, max_length=10)
     cep: str = Field(regex=r"^\d{8}$", max_length=8)
+    complemento: str = Field(max_length=15)
 
 class Tutor(TutorCreate, table=True):
     id: int | None = Field(default=None, primary_key=True)
@@ -72,10 +82,12 @@ class TutorEdit(SQLModel):
     nome: str | None = Field(default=None, min_length=1, max_length=100)
     email: str | None = Field(default=None, max_length=150, unique=True)
     telefone: str | None = Field(default=None, regex=r"^\d+$", max_length=11)
-    endereco: str | None = Field(default=None, min_length=1, max_length=200)
+    endereco: str | None = Field(default=None, regex=r"^[\w\s.,ºª'/-]+$", min_length=1, max_length=200)
+    numero: str | None = Field(regex=r"^(\d+[A-Za-z]?|S/N)$", default=None, min_length=1, max_length=10)
     cep: str | None = Field(default=None, regex=r"^\d{8}$")
+    complemento: str | None = Field(default=None, max_length=15)
 
-    @field_validator("endereco", "cep")
+    @field_validator("endereco", "cep", "numero", "complemento")
     @classmethod
     def nao_pode_ser_nulo(cls, valor, info: ValidationInfo):
         if valor is None:
@@ -162,7 +174,7 @@ def get_session():
     with Session(engine) as session:
         yield session
 
-app = FastAPI(title="Vetsys API", description="API para gerenciamento de tutores e pets", version="1.9.0")
+app = FastAPI(title="Vetsys API", description="API para gerenciamento de tutores e pets", version="2.1.0")
 SessionDep = Annotated[Session, Depends(get_session)]
 
 app.add_middleware(

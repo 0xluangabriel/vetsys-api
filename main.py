@@ -270,7 +270,7 @@ def excluir_usuario(id_usuario: int, session: SessionDep, usuario: AdminAtual):
         raise HTTPException(status_code=400, detail="Você não pode excluir a si mesmo.")
     session.delete(alvo)
     session.commit()
-    return {"mensagem": "Usuário excluido com sucesso."}
+    return {"mensagem": "Usuário excluído com sucesso."}
 
 #----------PROCEDIMENTOS----------
 
@@ -313,7 +313,7 @@ def att_parte_procedimento(id_procedimento: int, dados: ProcedimentoEdit, sessio
         if session.get(Animal, dados.id_animal) is None:
             raise HTTPException(status_code=404, detail="Esse ID de animal está inválido ou não existe.")
     for key, value in dados.model_dump(exclude_unset=True).items():
-            setattr(procedimento, key, value)
+        setattr(procedimento, key, value)
         
     session.commit()
     session.refresh(procedimento)
@@ -356,7 +356,7 @@ def atualizar_animal(id_animal: int, dados: AnimalCreate, session: SessionDep, u
     if animal is None:
         raise HTTPException(status_code=404, detail="ID de Animal inválido ou não encontrado.")
     if session.get(Tutor, dados.id_tutor) is None:
-            raise HTTPException(status_code=404, detail="ID de Tutor inválido ou não encontrado.")
+        raise HTTPException(status_code=404, detail="ID de Tutor inválido ou não encontrado.")
     
     
     for key, value in dados.model_dump().items():

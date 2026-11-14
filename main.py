@@ -52,12 +52,17 @@ class PerfilUsuario(str, Enum):
     comum = "comum"
     funcionario = "funcionario"
     admin = "admin"
+    tutor = "tutor"
 
 class PerfilEdit(SQLModel):
     perfil: PerfilUsuario
 
+class TutorUserEdit(SQLModel):
+    id_tutor: int
+
 class Usuario(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    id_tutor: int | None = Field(default=None, foreign_key="tutor.id", ondelete="SET NULL", unique=True)
     nome: str = Field(max_length=100)
     email: EmailStr = Field(max_length=150, unique=True)
     senha_hash: str = Field(max_length=255)
@@ -222,6 +227,15 @@ def get_funcionario(usuario: UsuarioAtual) -> Usuario:
 
 FuncionarioAtual = Annotated[Usuario, Depends(get_funcionario)]
 
+def get_tutor(usuario: UsuarioAtual) -> Usuario:
+    if usuario.perfil != PerfilUsuario.tutor:
+        raise HTTPException(status_code=403, detail="Acesso apenas para tutores.")
+    if usuario.id_tutor is None:
+        raise HTTPException(status_code=403, detail="Esse usuário não possui vínculo com tutor.")
+    return usuario
+
+TutorAtual = Annotated[Usuario, Depends(get_tutor)]
+
 def get_admin(usuario: UsuarioAtual) -> Usuario:
     if usuario.perfil != PerfilUsuario.admin:
         raise HTTPException(status_code=403, detail="Acesso restrito a administradores.")
@@ -272,6 +286,7 @@ def definir_funcionario(id_usuario: int, session: SessionDep, usuario: AdminAtua
     if alvo.id == usuario.id:
         raise HTTPException(status_code=400, detail="Você não pode se rebaixar de admin.")
     alvo.perfil = PerfilUsuario.funcionario
+    alvo.id_tutor = None
     session.add(alvo)
     session.commit()
     session.refresh(alvo)
@@ -285,8 +300,30 @@ def definir_comum(id_usuario: int, session: SessionDep, usuario: AdminAtual):
     if alvo.id == usuario.id:
         raise HTTPException(status_code=400, detail="Você não pode se rebaixar de admin.")
     alvo.perfil = PerfilUsuario.comum
+    alvo.id_tutor = None
     session.add(alvo)
     session.commit()
+    session.refresh(alvo)
+    return alvo
+
+@app.patch("/admin/usuarios/{id_usuario}/tutor", response_model=UsuarioAdminOut)
+def definir_tutor(id_usuario: int, session: SessionDep, dados: TutorUserEdit, usuario: AdminAtual):
+    alvo = session.get(Usuario, id_usuario)
+    tutor = session.get(Tutor, dados.id_tutor)
+    if alvo is None:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+    if alvo.id == usuario.id:
+        raise HTTPException(status_code=400, detail="Você não pode se rebaixar de admin.")
+    if tutor is None:
+        raise HTTPException(status_code=404, detail="Tutor não encontrado.")
+    alvo.perfil = PerfilUsuario.tutor
+    alvo.id_tutor = dados.id_tutor
+    session.add(alvo)
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="Tutor já vinculado a um usuário.")
     session.refresh(alvo)
     return alvo
 
@@ -300,6 +337,17 @@ def excluir_usuario(id_usuario: int, session: SessionDep, usuario: AdminAtual):
     session.delete(alvo)
     session.commit()
     return {"mensagem": "Usuário excluído com sucesso."}
+
+#----------USUARIO_TUTOR----------
+
+@app.get("/meus/animais")
+def listar_proprios_animais(session: SessionDep, usuario: TutorAtual, skip: int = Query(default=0, ge=0), limit: int = Query(default=10, ge=1, le=100)):
+    return session.exec(select(Animal).order_by(Animal.id).where(Animal.id_tutor == usuario.id_tutor).offset(skip).limit(limit)).all()
+
+@app.get("/meus/procedimentos")
+def listar_proprios_procedimentos(session: SessionDep, usuario: TutorAtual, skip: int = Query(default=0, ge=0), limit: int = Query(default=10, ge=1, le=100)):
+    return session.exec(select(Procedimento).join(Animal, Procedimento.id_animal == Animal.id).order_by(Procedimento.data.desc()).where(Animal.id_tutor == usuario.id_tutor).offset(skip).limit(limit)).all()
+
 
 #----------PROCEDIMENTOS----------
 
@@ -365,6 +413,7 @@ def apagar_procedimento(id_procedimento: int, session: SessionDep, usuario: Func
     return {"mensagem": "Procedimento apagado com sucesso."}
 
 #----------ANIMAIS----------
+
 @app.get("/animais")
 def listar_animais(session: SessionDep, usuario: FuncionarioAtual, skip: int = Query(default=0, ge=0), limit: int = Query(default=10, ge=1, le=100)):
     return session.exec(select(Animal).order_by(Animal.id).offset(skip).limit(limit)).all()
@@ -442,6 +491,7 @@ def att_parte_animal(id_animal: int, dados: AnimalEdit, session: SessionDep, usu
     return animal
 
 #----------TUTORES----------
+
 @app.post("/tutores", status_code=201)
 def criar_tutor(dados: TutorCreate, session: SessionDep, usuario: FuncionarioAtual):
     tutor = Tutor(**dados.model_dump())

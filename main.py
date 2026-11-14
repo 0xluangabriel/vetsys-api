@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from datetime import date, datetime, timedelta, timezone
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, ValidationInfo
 from sqlalchemy.exc import IntegrityError
 from pwdlib import PasswordHash
 from dotenv import load_dotenv
@@ -61,6 +61,8 @@ class TutorCreate(SQLModel):
     nome: str = Field(min_length=1, max_length=100)
     email: str = Field(max_length=150, unique=True)
     telefone: str = Field(regex=r"^\d+$", max_length=11)
+    endereco: str = Field(min_length=1, max_length=200)
+    cep: str = Field(regex=r"^\d{8}$", max_length=8)
 
 class Tutor(TutorCreate, table=True):
     id: int | None = Field(default=None, primary_key=True)
@@ -70,7 +72,16 @@ class TutorEdit(SQLModel):
     nome: str | None = Field(default=None, min_length=1, max_length=100)
     email: str | None = Field(default=None, max_length=150, unique=True)
     telefone: str | None = Field(default=None, regex=r"^\d+$", max_length=11)
+    endereco: str | None = Field(default=None, min_length=1, max_length=200)
+    cep: str | None = Field(default=None, regex=r"^\d{8}$")
 
+    @field_validator("endereco", "cep")
+    @classmethod
+    def nao_pode_ser_nulo(cls, valor, info: ValidationInfo):
+        if valor is None:
+            raise ValueError("O campo {} não pode estar vazio.".format(info.field_name))
+        return valor
+    
 class AnimalCreate(SQLModel):
     id_tutor: int = Field(foreign_key="tutor.id", ondelete="CASCADE")
     nome: str = Field(min_length=1, max_length=100)
@@ -101,12 +112,19 @@ class TipoProcedimento(str, Enum):
     consulta = "Consulta"
     cirurgia = "Cirurgia"
 
+class FormaPagamento(str, Enum):
+    credito = "Cartão de Crédito"
+    debito = "Cartão de Débito"
+    pix = "Pix"
+    dinheiro = "Dinheiro"
+
 class ProcedimentoCreate(SQLModel):
     id_animal: int = Field(foreign_key="animal.id", ondelete="CASCADE")
     nome: str = Field(min_length=1, max_length=100)
     descricao: str = Field(min_length=1, max_length=500)
     preco: float
     tipo: TipoProcedimento
+    forma_pagamento: FormaPagamento | None = None
     data: date
 
     @field_validator("data")
@@ -121,6 +139,7 @@ class ProcedimentoEdit(SQLModel):
     descricao: str | None = Field(default=None, min_length=1, max_length=500)
     preco: float | None = None
     tipo: TipoProcedimento | None = None
+    forma_pagamento: FormaPagamento | None = None
     data: date | None = None
     id_animal: int | None = None
 

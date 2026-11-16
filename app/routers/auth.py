@@ -13,7 +13,8 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 @router.post("/registro", status_code=201, response_model=UsuarioOut)
-def registrar(dados: UsuarioCreate, session: SessionDep):
+@limiter.limit("5/minute")
+def registrar(dados: UsuarioCreate, session: SessionDep, request: Request):
     usuario = Usuario(nome=dados.nome, email=dados.email, senha_hash=password_hash.hash(dados.senha))
     session.add(usuario)
     try:

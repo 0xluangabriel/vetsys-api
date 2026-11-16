@@ -1,0 +1,47 @@
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import event
+from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel.pool import StaticPool
+
+from app.database import get_session
+from app.main import app
+from app.security import limiter
+
+
+@pytest.fixture
+def session():
+    # "sqlite://" sem nome de arquivo = banco em memória
+    # StaticPool = todas as conexões usam o mesmo banco (senão cada uma veria um banco vazio)
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+    # O SQLite vem com as chaves estrangeiras DESLIGADAS.
+    # Sem isso, CASCADE e SET NULL não funcionam nos testes.
+    @event.listens_for(engine, "connect")
+    def ligar_fks(conexao, _):
+        cursor = conexao.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        yield session   # o teste roda aqui; depois disso o banco some
+
+
+@pytest.fixture
+def cliente(session):
+    def get_session_teste():
+        yield session
+
+    app.dependency_overrides[get_session] = get_session_teste
+    limiter.enabled = False
+
+    yield TestClient(app)
+
+    # limpeza: devolve o app ao normal para não vazar para outros testes
+    app.dependency_overrides.clear()
+    limiter.enabled = True

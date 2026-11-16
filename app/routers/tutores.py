@@ -8,7 +8,7 @@ from app.security import FuncionarioAtual
 
 router = APIRouter(prefix="/tutores", tags=["Tutores"])
 
-@router.post("/", status_code=201)
+@router.post("", status_code=201)
 def criar_tutor(dados: TutorCreate, session: SessionDep, usuario: FuncionarioAtual):
     tutor = Tutor(**dados.model_dump())
     if dados.email and session.exec(select(Tutor).where(Tutor.email == dados.email)).first():
@@ -39,7 +39,7 @@ def atualizar_tutor(id_tutor: int, dados: TutorCreate, session: SessionDep, usua
     session.refresh(tutor)
     return tutor
 
-@router.get("/")
+@router.get("")
 def listar_tutores(session: SessionDep, usuario: FuncionarioAtual, skip: int = Query(default=0, ge=0), limit: int = Query(default=10, ge=1, le=100)):
     return session.exec(select(Tutor).order_by(Tutor.id).offset(skip).limit(limit)).all()
 

@@ -8,11 +8,11 @@ from app.security import FuncionarioAtual
 
 router = APIRouter(prefix="/animais", tags=["Animais"])
 
-@router.get("/")
+@router.get("")
 def listar_animais(session: SessionDep, usuario: FuncionarioAtual, skip: int = Query(default=0, ge=0), limit: int = Query(default=10, ge=1, le=100)):
     return session.exec(select(Animal).order_by(Animal.id).offset(skip).limit(limit)).all()
 
-@router.post("/", status_code=201)
+@router.post("", status_code=201)
 def criar_animal(dados: AnimalCreate, session: SessionDep, usuario: FuncionarioAtual):
     if session.get(Tutor, dados.id_tutor) is None:
         raise HTTPException(status_code=404, detail="ID de Tutor inválido ou não encontrado.")

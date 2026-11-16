@@ -8,11 +8,11 @@ from app.security import FuncionarioAtual
 
 router = APIRouter(prefix="/procedimentos", tags=["Procedimentos"])
 
-@router.get("/")
+@router.get("")
 def listar_procedimentos(session: SessionDep, usuario: FuncionarioAtual, skip: int = Query(default=0, ge=0), limit: int = Query(default=10, ge=1, le=100)):
     return session.exec(select(Procedimento).order_by(Procedimento.id).offset(skip).limit(limit)).all()
 
-@router.post("/", status_code=201)
+@router.post("", status_code=201)
 def criar_procedimento(dados: ProcedimentoCreate, session: SessionDep, usuario: FuncionarioAtual):
     if session.get(Animal, dados.id_animal) is None:
         raise HTTPException(status_code=404, detail="Animal não encontrado.")

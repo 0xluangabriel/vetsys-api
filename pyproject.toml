@@ -13,3 +13,12 @@ dependencies = [
     "slowapi>=0.1.10",
     "sqlmodel>=0.0.48",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

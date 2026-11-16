@@ -3,6 +3,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import event
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
+from app.models import PerfilUsuario, Usuario, UsuarioCreate
+from app.security import password_hash
 
 from app.database import get_session
 from app.main import app
@@ -45,3 +47,14 @@ def cliente(session):
     # limpeza: devolve o app ao normal para não vazar para outros testes
     app.dependency_overrides.clear()
     limiter.enabled = True
+
+@pytest.fixture
+def headers_funcionario(session, cliente):
+    email = "joseromero@example.com"
+    senha = "JoseRomero22@"
+    funcionario = Usuario(nome="José Romero", email=email, senha_hash=password_hash.hash(senha), perfil=PerfilUsuario.funcionario)
+    session.add(funcionario)
+    session.commit()
+    login = cliente.post("/auth/login", data={"username": email, "password": senha})
+    token = login.json()["access_token"]
+    return {"Authorization": "Bearer {}".format(token)}

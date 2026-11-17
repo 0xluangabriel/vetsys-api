@@ -4,6 +4,10 @@ API REST para gestão de clínicas veterinárias (tutores, animais, procedimento
 
 É a evolução do **VetSys CLI**, um sistema de terminal com dados em JSON, reconstruído como API com banco relacional.
 
+**Vídeo de apresentação (narrado em inglês, cerca de 4 minutos):**
+
+[![Vídeo de apresentação da VetSys API, em inglês](https://img.youtube.com/vi/9KRZdcCzR4Q/hqdefault.jpg)](https://youtu.be/9KRZdcCzR4Q)
+
 ## Destaques
 
 - **Segurança por padrão:** senhas com Argon2, JWT de 30 minutos, rate limiting, proteção contra IDOR, timing attack e mass assignment, e usuário de banco com privilégio mínimo.

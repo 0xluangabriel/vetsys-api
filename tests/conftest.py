@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import event
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
-from app.models import PerfilUsuario, Usuario, UsuarioCreate
+from app.models import PerfilUsuario, Usuario, Tutor
 from app.security import password_hash
 
 from app.database import get_session
@@ -54,6 +54,42 @@ def headers_funcionario(session, cliente):
     senha = "JoseRomero22@"
     funcionario = Usuario(nome="José Romero", email=email, senha_hash=password_hash.hash(senha), perfil=PerfilUsuario.funcionario)
     session.add(funcionario)
+    session.commit()
+    login = cliente.post("/auth/login", data={"username": email, "password": senha})
+    token = login.json()["access_token"]
+    return {"Authorization": "Bearer {}".format(token)}
+
+@pytest.fixture
+def headers_admin(session, cliente):
+    email = "flavionolasco@example.com"
+    senha = "FlavioNolasco22@"
+    admin = Usuario(nome="Flavio Nolasco", email=email, senha_hash=password_hash.hash(senha), perfil=PerfilUsuario.admin)
+    session.add(admin)
+    session.commit()
+    login = cliente.post("/auth/login", data={"username": email, "password": senha})
+    token = login.json()["access_token"]
+    return {"Authorization": "Bearer {}".format(token)}
+
+@pytest.fixture
+def headers_comum(session, cliente):
+    email = "rodrigosilvo@example.com"
+    senha = "RodrigoSilvo22@"
+    comum = Usuario(nome="Rodrigo Silvo", email=email, senha_hash=password_hash.hash(senha), perfil=PerfilUsuario.comum)
+    session.add(comum)
+    session.commit()
+    login = cliente.post("/auth/login", data={"username": email, "password": senha})
+    token = login.json()["access_token"]
+    return {"Authorization": "Bearer {}".format(token)}
+
+@pytest.fixture
+def headers_tutor(session, cliente):
+    email = "marianacosta@example.com"
+    senha = "MarianaCosta22@"
+    tutor_db = Tutor(nome="Mariana Costa", email=email, telefone="31999999999", endereco="Rua Exemplo", numero="000", cep="00000000", complemento="Exemplo")
+    session.add(tutor_db)
+    session.commit()
+    tutor = Usuario(id_tutor=tutor_db.id, nome="Mariana Costa", email=email, senha_hash=password_hash.hash(senha), perfil=PerfilUsuario.tutor)
+    session.add(tutor)
     session.commit()
     login = cliente.post("/auth/login", data={"username": email, "password": senha})
     token = login.json()["access_token"]

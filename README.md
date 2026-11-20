@@ -1,4 +1,5 @@
 # VetSys API
+![Testes](https://github.com/0xluangabriel/vetsys-api/actions/workflows/testes.yml/badge.svg)
 
 API REST para gestão de clínicas veterinárias (tutores, animais, procedimentos, histórico clínico e carteira de vacinação), com autenticação JWT, controle de acesso por quatro perfis e um portal em que cada tutor vê apenas os próprios dados. Construída com Python, FastAPI, SQLModel e MySQL, com foco em segurança e em testes automatizados.
 
@@ -229,8 +230,8 @@ As tabelas são criadas automaticamente na primeira execução.
 - [x] Limite máximo de paginação
 - [x] Rate limiting e proteção contra timing attack
 - [x] Portal do tutor com proteção contra IDOR
-- [ ] Ampliar os testes (tutores, animais e procedimentos)
-- [ ] Integração contínua com GitHub Actions
+- [x] Ampliar os testes (tutores, animais e procedimentos)
+- [x] Integração contínua com GitHub Actions
 - [ ] Docker e docker-compose
 - [ ] Migrations com Alembic
 - [ ] Deploy

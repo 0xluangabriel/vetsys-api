@@ -1,6 +1,5 @@
 from sqlmodel import select
 from datetime import date
-from app.security import limiter
 from app.models import Tutor, Animal, Procedimento, TipoProcedimento, FormaPagamento
 
 def test_idor_meus_animais(cliente, session, headers_tutor):

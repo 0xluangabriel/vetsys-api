@@ -1,5 +1,4 @@
 from sqlmodel import select
-from app.security import limiter
 from app.models import Tutor
 
 def test_funcionario_rota_tutores_200(cliente, headers_funcionario):

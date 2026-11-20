@@ -16,12 +16,8 @@ from app.security import limiter
 def rate_limit(request, exc):
         return JSONResponse(status_code=429, content="Too many requests.")
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    SQLModel.metadata.create_all(engine) # roda quando o servidor sobe
-    yield
 
-app = FastAPI(title="Vetsys API", description="API para gerenciamento de tutores e pets", version="2.2.0", lifespan=lifespan)
+app = FastAPI(title="Vetsys API", description="API para gerenciamento de tutores e pets", version="2.2.0")
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit)

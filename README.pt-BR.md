@@ -433,8 +433,6 @@ O workflow `.github/workflows/testes.yml` roda a suíte de testes a cada push e 
 - [x] Docker e Docker Compose
 - [x] Migrações com Alembic
 - [x] Usuários do banco com privilégio mínimo, inclusive no Docker
-- [ ] Criação do primeiro administrador por variáveis de ambiente
-- [ ] Deploy
 
 ## Sobre o front-end
 

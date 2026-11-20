@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
+from contextlib import asynccontextmanager
 from sqlmodel import SQLModel
 
 from app import models
@@ -10,13 +11,17 @@ from app.routers import admin, animais, auth, meus, procedimentos, tutores
 from app.security import limiter
 
 
-SQLModel.metadata.create_all(engine)
+
 
 def rate_limit(request, exc):
         return JSONResponse(status_code=429, content="Too many requests.")
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    SQLModel.metadata.create_all(engine) # roda quando o servidor sobe
+    yield
 
-app = FastAPI(title="Vetsys API", description="API para gerenciamento de tutores e pets", version="2.1.0")
+app = FastAPI(title="Vetsys API", description="API para gerenciamento de tutores e pets", version="2.2.0", lifespan=lifespan)
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit)
@@ -35,3 +40,4 @@ app.include_router(tutores.router)
 app.include_router(animais.router)
 app.include_router(procedimentos.router)
 app.include_router(meus.router)
+

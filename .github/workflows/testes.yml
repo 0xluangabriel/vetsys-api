@@ -1,0 +1,22 @@
+name: Testes
+
+on: [push, pull_request]
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: "sqlite://"
+      SECRET_KEY: "chave-falsa-apenas-para-testes-no-ci-0000"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+
+      - run: uv sync
+
+      - run: uv run pytest -v
